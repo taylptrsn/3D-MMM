@@ -36,7 +36,7 @@ struct Sink {
   double y;
   int z;
   double inputCapacitance;
-  string color; 
+  string color;
   // Constructor with default sink color set to gray/uncolored
   Sink(double x = 0, double y = 0, int z = 0, double inputCapacitance = 0,
        string color = "Gray")
@@ -212,7 +212,7 @@ void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
       }
     }
   }
-  //cout << "ending Z-cut!" << endl;
+  // cout << "ending Z-cut!" << endl;
 }
 
 Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
@@ -385,28 +385,22 @@ int main() {
     cerr << "Error opening file!" << endl;
     return 1;
   }
-  // Parse layout
+  // Parse input file
   inputFile >> layout.width >> layout.height >> layout.numDies;
   inputFile.ignore(numeric_limits<streamsize>::max(),
                    '\n'); // Ignore the rest of the line
-  // Parse unit wire
   inputFile >> wireUnits.resistance >> wireUnits.capacitance;
   inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  // Parse buffer
   inputFile >> bufferUnits.outputResistance >> bufferUnits.inputCapacitance >>
       bufferUnits.intrinsicDelay;
   inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  // Parse TSV
   inputFile >> tsvUnits.resistance >> tsvUnits.capacitance;
   inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  // Parse clock source
   inputFile >> clockSource.x >> clockSource.y >> clockSource.z >>
       clockSource.outputResistance;
   inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  // Parse number of sinks
   inputFile >> numSinks;
   inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  // Parse sinks
   for (int i = 0; i < numSinks; ++i) {
     Sink sink;
     inputFile >> sink.x >> sink.y >> sink.z >> sink.inputCapacitance;
@@ -443,23 +437,23 @@ int main() {
   cout << endl;
   cout << "Median of x coordinates: " << calculateMedianX(sinks) << endl;
   cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
-  
+
   // Generate the 3D tree
   Node *root = AbsTreeGen3D(sinks, bound);
   // Print the generated tree
   cout << endl;
   cout << "Sinks of Abstract Tree:" << endl;
   printLeaves(root);
-  //cout << "Abstract Tree:" << endl;
-  //printTree(root);
-  // Define colors for dies
+  // cout << "Abstract Tree:" << endl;
+  // printTree(root);
+  //  Define colors for dies
   vector<string> dieColors = {"Red", "Green", "Blue", "Purple", "Lime"};
   // Assign colors to sinks in the tree
   colorTree(root, dieColors);
   // Collect all sinks
   vector<Sink> allSinks;
   collectSinks(root, allSinks);
-  //Sort and print sinks by color
+  // Sort and print sinks by color
   cout << endl;
   sortAndPrintSinksByColor(allSinks);
   /*string selectedColor = "Purple";
