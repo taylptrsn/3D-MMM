@@ -1,0 +1,26 @@
+100 100 4 // the layout area ((0,0) to (100um,100um)), # dies (4)
+0.1 0.2 // unit wire resistance (ohm/um), unit wire capacitance (fF/um)
+122 24 17 // Buffer: output resistance (ohm), input cap. (fF), intrinsic delay (ps)
+0.035 15 // TSV (or MIV): resistance (ohm), capacitance (fF)
+50 0 1 100 // the location of the clock source and its output resistance (ohm)
+20 // # sinks
+42 56 3 0.75 // (x,y,z) and its input capacitance (fF) of sink 1
+19 88 2 0.21
+73 10 1 0.94
+67 30 2 0.12
+95 76 4 0.68
+5 92 2 0.36
+32 71 1 0.80
+11 44 3 0.45
+88 22 1 0.17
+61 52 2 0.63
+7 16 4 0.98
+80 95 1 0.33
+48 5 4 0.71
+25 38 3 0.56
+92 69 1 0.27
+14 81 2 0.79
+36 26 3 0.14
+69 63 1 0.42
+45 47 3 0.60
+3 4 1 0.05
