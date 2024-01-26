@@ -327,7 +327,7 @@ void colorTree(Node *node, const vector<string> &dieColors) {
   }
   if (node->leftChild == nullptr && node->rightChild == nullptr) {
     for (auto &sink : node->sinks) {
-      sink.color = dieColors[sink.z % dieColors.size()];
+      sink.color = dieColors[sink.z % dieColors.size()-1];
     }
   } else {
     colorTree(node->leftChild, dieColors);
