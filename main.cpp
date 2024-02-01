@@ -435,8 +435,8 @@ int main() {
   }
   inputFile.close();
   cout << endl;
-  cout << "Median of x coordinates: " << calculateMedianX(sinks) << endl;
-  cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
+  //cout << "Median of x coordinates: " << calculateMedianX(sinks) << endl;
+  //cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
 
   // Generate the 3D tree
   Node *root = AbsTreeGen3D(sinks, bound);
