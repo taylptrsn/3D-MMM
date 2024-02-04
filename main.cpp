@@ -5,7 +5,9 @@
 #include <iostream>
 #include <limits>
 #include <vector>
+
 using namespace std;
+
 // Structure Definitions
 struct Layout {
   double width;
@@ -49,6 +51,7 @@ struct Node {
   Node(const vector<Sink> &sinks)
       : sinks(sinks), leftChild(nullptr), rightChild(nullptr) {}
 };
+
 // Global Variables
 Layout layout;
 WireUnits wireUnits;
@@ -57,7 +60,10 @@ TSVUnits tsvUnits;
 ClockSource clockSource;
 int numSinks;
 vector<Sink> sinks;
+vector<string> dieColors = {"Red", "Green", "Blue", "Purple",
+                            "Lime"}; //  Define colors for dies
 
+// Utility Functions
 // Function to calculate the median of x coordinates
 double calculateMedianX(const vector<Sink> &sinks) {
   vector<double> xCoordinates;
@@ -177,6 +183,7 @@ double getMaxZ(const vector<Sink> &sinks) {
   return maxZ;
 }
 
+// Core Logic
 // Function to perform Z-cut
 void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
           vector<Sink> &Sb) {
@@ -327,7 +334,7 @@ void colorTree(Node *node, const vector<string> &dieColors) {
   }
   if (node->leftChild == nullptr && node->rightChild == nullptr) {
     for (auto &sink : node->sinks) {
-      sink.color = dieColors[sink.z % dieColors.size()-1];
+      sink.color = dieColors[sink.z % dieColors.size() - 1];
     }
   } else {
     colorTree(node->leftChild, dieColors);
@@ -378,12 +385,12 @@ void sortSinksByZ(vector<Sink> &sinks) {
        [](const Sink &a, const Sink &b) { return a.z < b.z; });
 }
 
-int main() {
-  int bound = 777;
-  ifstream inputFile("benchmark0.txt");
+// Function to parse input from a file
+void parseInput(const string &filename) {
+  ifstream inputFile(filename);
   if (!inputFile.is_open()) {
     cerr << "Error opening file!" << endl;
-    return 1;
+    exit(1); // Exit if file cannot be opened
   }
   // Parse input file
   inputFile >> layout.width >> layout.height >> layout.numDies;
@@ -407,7 +414,10 @@ int main() {
     sinks.push_back(sink);
     inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
   }
-  // Display parsed data
+  inputFile.close();
+}
+
+void displayParsedData() {
   cout << "Layout Area: (" << layout.width << "," << layout.height
        << ")(x,y)(um)" << endl;
   cout << "Number Of Dies: " << layout.numDies << endl;
@@ -433,37 +443,40 @@ int main() {
          << ")(x,y,z), Input Capacitance - " << sink.inputCapacitance << " fF"
          << endl;
   }
-  inputFile.close();
   cout << endl;
-  //cout << "Median of x coordinates: " << calculateMedianX(sinks) << endl;
-  //cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
+  cout << "Median of x coordinates: " << calculateMedianX(sinks) << endl;
+  cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
+
+}
+
+int main() {
+  int bound = 1;
+  // Call parseInput to read and parse the input file
+  parseInput("benchmark2.txt");
+  
+  // Display parsed data
+  displayParsedData();
 
   // Generate the 3D tree
   Node *root = AbsTreeGen3D(sinks, bound);
-  // Print the generated tree
+  // Print the sinks of generated tree
   cout << endl;
   cout << "Sinks of Abstract Tree:" << endl;
   printLeaves(root);
+
+  // Print the generated tree
+  //cout << endl;
   // cout << "Abstract Tree:" << endl;
   // printTree(root);
-  //  Define colors for dies
-  vector<string> dieColors = {"Red", "Green", "Blue", "Purple", "Lime"};
+
   // Assign colors to sinks in the tree
   colorTree(root, dieColors);
   // Collect all sinks
   vector<Sink> allSinks;
   collectSinks(root, allSinks);
-  // Sort and print sinks by color
   cout << endl;
   sortAndPrintSinksByColor(allSinks);
-  /*string selectedColor = "Purple";
-  // Get sinks by the selected color
-  vector<Sink> sinksOfSelectedColor = getSinksByColor(allSinks, selectedColor);
-  // Print sinks of the selected color
-  cout << "Sinks with color " << selectedColor << ":" << endl;
-  for (const auto &sink : sinksOfSelectedColor) {
-    cout << "(" << sink.x << ", " << sink.y << ", " << sink.z << ")" << endl;
-  } */
+  
   // Clean up memory
   deleteTree(root);
   return 0;
