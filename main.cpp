@@ -100,11 +100,11 @@ double calculateMedianY(const vector<Sink> &sinks) {
 }
 
 // Function to return the minimum x value in the set of sinks
-double getMinX(const vector<Sink> &sinks) {
+int getMinX(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    return numeric_limits<double>::quiet_NaN(); // Return NaN for empty set
+    throw std::runtime_error("No sinks available to determine minimum X.");
   }
-  double minX = sinks[0].x;
+  int minX = sinks[0].x;
   for (const auto &sink : sinks) {
     if (sink.x < minX) {
       minX = sink.x;
@@ -114,11 +114,11 @@ double getMinX(const vector<Sink> &sinks) {
 }
 
 // Function to return the maximum x value in the set of sinks
-double getMaxX(const vector<Sink> &sinks) {
+int getMaxX(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    return numeric_limits<double>::quiet_NaN(); // Return NaN for empty set
+    throw std::runtime_error("No sinks available to determine maximum X.");
   }
-  double maxX = sinks[0].x;
+  int maxX = sinks[0].x;
   for (const auto &sink : sinks) {
     if (sink.x > maxX) {
       maxX = sink.x;
@@ -128,11 +128,11 @@ double getMaxX(const vector<Sink> &sinks) {
 }
 
 // Function to return the minimum y value in the set of sinks
-double getMinY(const vector<Sink> &sinks) {
+int getMinY(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    return numeric_limits<double>::quiet_NaN(); // Return NaN for empty set
+    throw std::runtime_error("No sinks available to determine minimum Y.");
   }
-  double minY = sinks[0].y;
+  int minY = sinks[0].y;
   for (const auto &sink : sinks) {
     if (sink.y < minY) {
       minY = sink.y;
@@ -142,11 +142,11 @@ double getMinY(const vector<Sink> &sinks) {
 }
 
 // Function to return the maximum y value in the set of sinks
-double getMaxY(const vector<Sink> &sinks) {
+int getMaxY(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    return numeric_limits<double>::quiet_NaN(); // Return NaN for empty set
+    throw std::runtime_error("No sinks available to determine maximum Y.");
   }
-  double maxY = sinks[0].y;
+  int maxY = sinks[0].y;
   for (const auto &sink : sinks) {
     if (sink.y > maxY) {
       maxY = sink.y;
@@ -155,12 +155,12 @@ double getMaxY(const vector<Sink> &sinks) {
   return maxY;
 }
 
-// Function to return the maximum y value in the set of sinks
-double getMinZ(const vector<Sink> &sinks) {
+// Function to return the minimum z value in the set of sinks
+int getMinZ(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    return numeric_limits<double>::quiet_NaN(); // Return NaN for empty set
+    throw std::runtime_error("No sinks available to determine minimum Z.");
   }
-  double minZ = sinks[0].z;
+  int minZ = sinks[0].z;
   for (const auto &sink : sinks) {
     if (sink.z < minZ) {
       minZ = sink.z;
@@ -169,12 +169,12 @@ double getMinZ(const vector<Sink> &sinks) {
   return minZ;
 }
 
-// Function to return the maximum y value in the set of sinks
-double getMaxZ(const vector<Sink> &sinks) {
+// Function to return the maximum z value in the set of sinks
+int getMaxZ(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    return numeric_limits<double>::quiet_NaN(); // Return NaN for empty set
+    throw std::runtime_error("No sinks available to determine maximum Z.");
   }
-  double maxZ = sinks[0].z;
+  int maxZ = sinks[0].z;
   for (const auto &sink : sinks) {
     if (sink.z > maxZ) {
       maxZ = sink.z;
@@ -191,26 +191,36 @@ void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
   cout << "Z-cut!" << endl;
   int Zmin = getMinZ(S); // Set your Zmin value
   int Zmax = getMaxZ(S); // Set your Zmax value
+
   // If Zs is less than or equal to Zmin
   if (Zs.z <= Zmin) {
-    if (!S.empty()) {
-      Sb.push_back(S[0]); // Assuming the first sink is the bottom-most
-      for (size_t i = 1; i < S.size(); ++i) {
-        St.push_back(S[i]); // The rest of the sinks
+    cout << "Zs is less than or equal to Zmin" << endl;
+    // if (!S.empty()) {
+    for (const auto &sink : S) {
+      if (sink.z == Zmin) {
+        Sb.push_back(sink);
+      } else {
+        St.push_back(sink);
       }
     }
+    //}
   }
   // If Zs is greater than or equal to Zmax
   else if (Zs.z >= Zmax) {
-    if (!S.empty()) {
-      St.push_back(S[0]); // Assuming the first sink is the top-most
-      for (size_t i = 1; i < S.size(); ++i) {
-        Sb.push_back(S[i]); // The rest of the sinks
+    cout << "If Zs is greater than or equal to Zmax" << endl;
+    // if (!S.empty()) {
+    for (const auto &sink : S) {
+      if (sink.z == Zmax) {
+        St.push_back(sink);
+      } else {
+        Sb.push_back(sink);
       }
     }
+    //}
   }
   // If Zs is between Zmin and Zmax
   else {
+    cout << "If Zs is between Zmin and Zmax" << endl;
     for (const auto &sink : S) {
       if (sink.z >= Zs.z) {
         St.push_back(sink); // S top
@@ -219,23 +229,22 @@ void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
       }
     }
   }
-  // cout << "ending Z-cut!" << endl;
 }
 
 Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
+  cout << "B " << B << endl;
   int B1 = 0;
   int B2 = 0;
   int deltaX = getMaxX(S) - getMinX(S);
   int deltaY = getMaxY(S) - getMinY(S);
+  int deltaZ = getMaxZ(S) - getMinZ(S);
   vector<Sink> St, Sb;
   ClockSource Zs = clockSource;
   if (S.size() == 1) {
     // Base case: if die span = 1, 2d tree
     return new Node(S);
-    // Case when B = 1, and span>1 perform Z-cut
-  } else if (B == 1 && S.size() > 1) {
+  } else if (deltaZ >= 1) {
     Zcut(S, Zs, St, Sb);
-    // cout << "post Z-cut!" << endl;
     //  Display St and Sb
     cout << "St (Top most die group):" << endl;
     for (const auto &sink : St) {
@@ -250,18 +259,19 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
            << endl;
     }
     B1 = B2 = 1;
+
   } else {
     double medianX = calculateMedianX(S);
     double medianY = calculateMedianY(S);
     for (const auto &sink : S) {
       if (deltaX > deltaY) {
-        if (sink.y < medianY) {
+        if (sink.x < medianX) {
           St.push_back(sink); // top subset
         } else {
           Sb.push_back(sink); // bottom subset
         }
       } else {
-        if (sink.x < medianX) {
+        if (sink.y < medianY) {
           St.push_back(sink); // top subset
         } else {
           Sb.push_back(sink); // bottom subset
@@ -270,6 +280,8 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
     }
     B1 = B / 2;
     B2 = B - B1;
+    cout << "B1 " << B1 << endl;
+    cout << "B2 " << B2 << endl;
   }
   Node *root = new Node(S);
   root->leftChild = AbsTreeGen3D(St, B1);
@@ -287,27 +299,32 @@ void deleteTree(Node *node) {
 }
 
 void printTree(Node *node, int level = 0) {
-  if (node) {
-    // Print the left branch first (top)
-    if (node->leftChild) {
-      printTree(node->leftChild, level + 1);
+  if (!node) {
+    return; // Base case: if the node is null, return.
+  }
+
+  string indent =
+      string(level * 8, ' '); // Increase indentation for each level.
+
+  // Print the left branch (child) first.
+  if (node->leftChild) {
+    printTree(node->leftChild, level + 1);
+  }
+
+  // Then, print the current node.
+  if (node->leftChild || node->rightChild) {
+    cout << indent << "Level " << level << " - Internal Node" << endl;
+  } else {
+    cout << indent << "Level " << level << " - Sinks (Leaves):" << endl;
+    for (const auto &sink : node->sinks) {
+      cout << indent << "  (" << sink.x << ", " << sink.y << ", " << sink.z
+           << ") Color: " << sink.color << endl;
     }
-    // Print the current node (center)
-    cout << setw(level * 7) << ""; // Adjust indentation
-    cout << "Node:" << endl;
-    if (!node->leftChild && !node->rightChild) {
-      cout << setw((level + 1) * 6) << ""; // Adjust indentation
-      cout << "Sink(Leaf):" << endl;
-      for (const auto &sink : node->sinks) {
-        cout << setw((level + 2) * 6) << ""; // Adjust indentation
-        cout << "(" << sink.x << ", " << sink.y << ", " << sink.z << ")"
-             << endl;
-      }
-    }
-    // Print the right branch last (bottom)
-    if (node->rightChild) {
-      printTree(node->rightChild, level + 1);
-    }
+  }
+
+  // Finally, print the right branch (child).
+  if (node->rightChild) {
+    printTree(node->rightChild, level + 1);
   }
 }
 
@@ -385,6 +402,31 @@ void sortSinksByZ(vector<Sink> &sinks) {
        [](const Sink &a, const Sink &b) { return a.z < b.z; });
 }
 
+void printOneSink(const Node *node) {
+  if (node == nullptr) {
+    return;
+  }
+  // Check if current node is a leaf node
+  if (node->leftChild == nullptr && node->rightChild == nullptr &&
+      !node->sinks.empty()) {
+    // Print the first sink in this leaf node
+    const auto &sink = node->sinks[0];
+    cout << "One Sink: (" << sink.x << ", " << sink.y << ", " << sink.z
+         << "), Input Capacitance - " << sink.inputCapacitance
+         << " fF, Color - " << sink.color << endl;
+    return; // Stop after printing one sink
+  } else {
+    // Recursively search for a leaf node in the left subtree first, then the
+    // right subtree
+    if (node->leftChild != nullptr) {
+      printOneSink(node->leftChild);
+    }
+    if (node->rightChild != nullptr) {
+      printOneSink(node->rightChild);
+    }
+  }
+}
+
 // Function to parse input from a file
 void parseInput(const string &filename) {
   ifstream inputFile(filename);
@@ -446,28 +488,28 @@ void displayParsedData() {
   cout << endl;
   cout << "Median of x coordinates: " << calculateMedianX(sinks) << endl;
   cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
-
 }
 
 int main() {
-  int bound = 1;
+  int bound = 5;
   // Call parseInput to read and parse the input file
-  parseInput("benchmark2.txt");
-  
-  // Display parsed data
+  parseInput("benchmark3.txt");
+  // sortSinksByZ(sinks);
+  //  Display parsed data
   displayParsedData();
 
   // Generate the 3D tree
   Node *root = AbsTreeGen3D(sinks, bound);
+
   // Print the sinks of generated tree
   cout << endl;
   cout << "Sinks of Abstract Tree:" << endl;
   printLeaves(root);
 
   // Print the generated tree
-  //cout << endl;
-  // cout << "Abstract Tree:" << endl;
-  // printTree(root);
+  cout << endl;
+  cout << "Abstract Tree:" << endl;
+  printTree(root);
 
   // Assign colors to sinks in the tree
   colorTree(root, dieColors);
@@ -476,7 +518,7 @@ int main() {
   collectSinks(root, allSinks);
   cout << endl;
   sortAndPrintSinksByColor(allSinks);
-  
+
   // Clean up memory
   deleteTree(root);
   return 0;
