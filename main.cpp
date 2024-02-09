@@ -59,6 +59,7 @@ BufferUnits bufferUnits;
 TSVUnits tsvUnits;
 ClockSource clockSource;
 int numSinks;
+int zCutCount = 0; // Keeps track of the number of Z-cuts performed
 vector<Sink> sinks;
 vector<string> dieColors = {"Red", "Green", "Blue", "Purple",
                             "Lime"}; //  Define colors for dies
@@ -191,8 +192,9 @@ void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
   cout << "Z-cut!" << endl;
   int Zmin = getMinZ(S); // Set your Zmin value
   int Zmax = getMaxZ(S); // Set your Zmax value
-
-  // If Zs is less than or equal to Zmin
+  // cout<<"zmin:  " << Zmin << endl;
+  // cout<<"zmax:  " << Zmax << endl;
+  //  If Zs is less than or equal to Zmin
   if (Zs.z <= Zmin) {
     cout << "Zs is less than or equal to Zmin" << endl;
     // if (!S.empty()) {
@@ -229,6 +231,7 @@ void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
       }
     }
   }
+  zCutCount++;
 }
 
 Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
@@ -243,7 +246,15 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
   if (S.size() == 1) {
     // Base case: if die span = 1, 2d tree
     return new Node(S);
-  } else if (deltaZ >= 1) {
+    //} else if (deltaZ > 1 && B==1) {
+  } else if (deltaX == 0 && deltaY == 0 && deltaZ >= 1) {
+    // New condition for the edge case where all x and y are the same, but z
+    // differs
+    cout << "Special case: All x and y coordinates are the same. Performing "
+            "Z-cut based on z coordinates."
+         << endl;
+    Zcut(S, Zs, St, Sb);
+  } else if (deltaZ >= 1 && B == 1) {
     Zcut(S, Zs, St, Sb);
     //  Display St and Sb
     cout << "St (Top most die group):" << endl;
@@ -283,6 +294,18 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
     cout << "B1 " << B1 << endl;
     cout << "B2 " << B2 << endl;
   }
+  /* cout << "St (Top most die group):" << endl;
+  for (const auto &sink : St) {
+    cout << "(" << sink.x << "," << sink.y << "," << sink.z
+         << ")(x,y,z), Input Capacitance - " << sink.inputCapacitance << " fF"
+         << endl;
+  }
+  cout << "Sb (Bottom most die group):" << endl;
+  for (const auto &sink : Sb) {
+    cout << "(" << sink.x << "," << sink.y << "," << sink.z
+         << ")(x,y,z), Input Capacitance - " << sink.inputCapacitance << " fF"
+         << endl;
+  } */
   Node *root = new Node(S);
   root->leftChild = AbsTreeGen3D(St, B1);
   root->rightChild = AbsTreeGen3D(Sb, B2);
@@ -310,18 +333,17 @@ void printTree(Node *node, int level = 0) {
   if (node->leftChild) {
     printTree(node->leftChild, level + 1);
   }
-
   // Then, print the current node.
   if (node->leftChild || node->rightChild) {
     cout << indent << "Level " << level << " - Internal Node" << endl;
   } else {
     cout << indent << "Level " << level << " - Sinks (Leaves):" << endl;
     for (const auto &sink : node->sinks) {
-      cout << indent << "  (" << sink.x << ", " << sink.y << ", " << sink.z
+      cout << indent << "(" << sink.x << ", " << sink.y << ", " << sink.z
            << ") Color: " << sink.color << endl;
     }
   }
-
+  cout << endl;
   // Finally, print the right branch (child).
   if (node->rightChild) {
     printTree(node->rightChild, level + 1);
@@ -491,16 +513,17 @@ void displayParsedData() {
 }
 
 int main() {
-  int bound = 5;
+  int bound = 10;
   // Call parseInput to read and parse the input file
-  parseInput("benchmark3.txt");
+  parseInput("allsamediffZ.txt");
   // sortSinksByZ(sinks);
   //  Display parsed data
   displayParsedData();
 
   // Generate the 3D tree
   Node *root = AbsTreeGen3D(sinks, bound);
-
+  colorTree(root, dieColors);
+  cout << "Number of Z-cuts performed: " << zCutCount << endl;
   // Print the sinks of generated tree
   cout << endl;
   cout << "Sinks of Abstract Tree:" << endl;
@@ -512,7 +535,7 @@ int main() {
   printTree(root);
 
   // Assign colors to sinks in the tree
-  colorTree(root, dieColors);
+  // colorTree(root, dieColors);
   // Collect all sinks
   vector<Sink> allSinks;
   collectSinks(root, allSinks);
