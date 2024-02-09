@@ -48,8 +48,10 @@ struct Node {
   vector<Sink> sinks;
   Node *leftChild;
   Node *rightChild;
-  Node(const vector<Sink> &sinks)
-      : sinks(sinks), leftChild(nullptr), rightChild(nullptr) {}
+  string color;
+  int dieIndex; // Added attribute for die index
+  Node(const vector<Sink> &sinks, string color = "Gray")
+      : sinks(sinks), leftChild(nullptr), rightChild(nullptr), color(color) {}
 };
 
 // Global Variables
@@ -61,8 +63,8 @@ ClockSource clockSource;
 int numSinks;
 int zCutCount = 0; // Keeps track of the number of Z-cuts performed
 vector<Sink> sinks;
-vector<string> dieColors = {"Red", "Green", "Blue", "Purple",
-                            "Lime"}; //  Define colors for dies
+vector<string> dieColors = {"Gray",   "Red", "Green", "Blue",
+                            "Purple", "Lime"}; //  Define colors for dies
 
 // Utility Functions
 // Function to calculate the median of x coordinates
@@ -333,14 +335,18 @@ void printTree(Node *node, int level = 0) {
   if (node->leftChild) {
     printTree(node->leftChild, level + 1);
   }
-  // Then, print the current node.
+
+  // Then, print the current node along with its color.
   if (node->leftChild || node->rightChild) {
-    cout << indent << "Level " << level << " - Internal Node" << endl;
+    // For internal nodes, display their color (if applicable).
+    cout << indent << "Level " << level
+         << " - Internal Node, Color: " << node->color << endl;
   } else {
+    // For leaf nodes, list all sinks and their colors.
     cout << indent << "Level " << level << " - Sinks (Leaves):" << endl;
     for (const auto &sink : node->sinks) {
-      cout << indent << "(" << sink.x << ", " << sink.y << ", " << sink.z
-           << ") Color: " << sink.color << endl;
+      cout << indent << "Sink: (" << sink.x << ", " << sink.y << ", " << sink.z
+           << "), Color: " << sink.color << endl;
     }
   }
   cout << endl;
@@ -367,18 +373,44 @@ void printLeaves(const Node *node) {
   }
 }
 
-void colorTree(Node *node, const vector<string> &dieColors) {
+void colorTree(Node *node, const vector<string> &dieColors,
+               const ClockSource &source, int depth = 0) {
   if (node == nullptr) {
     return;
   }
-  if (node->leftChild == nullptr && node->rightChild == nullptr) {
-    for (auto &sink : node->sinks) {
-      sink.color = dieColors[sink.z % dieColors.size() - 1];
-    }
+
+  // Determine the color of the source based on its z-coordinate
+  string sourceColor = dieColors[source.z % dieColors.size()];
+
+  if (depth == 0) { // If the node is the root
+    node->color = sourceColor;
   } else {
-    colorTree(node->leftChild, dieColors);
-    colorTree(node->rightChild, dieColors);
+    int Zmin = getMinZ(node->sinks);
+    int Zmax = getMaxZ(node->sinks);
+    if (Zmin > source.z) {
+      // If Zmin is greater than the z-coordinate of the source, set to the
+      // color of Zmin
+      node->color = dieColors[Zmin % dieColors.size()];
+    } else if (Zmax < source.z) {
+      // If Zmax is less than the z-coordinate of the source, set to the color
+      // of Zmax
+      node->color = dieColors[Zmax % dieColors.size()];
+    } else {
+      // Otherwise, set to the color of the source
+      node->color = sourceColor;
+    }
   }
+
+  // Assign colors to the sinks within this node
+  for (auto &sink : node->sinks) {
+    // Assuming all sinks in a node have the same color, so assign the node's
+    // color
+    sink.color = node->color;
+  }
+
+  // Recurse for child nodes with incremented depth
+  colorTree(node->leftChild, dieColors, source, depth + 1);
+  colorTree(node->rightChild, dieColors, source, depth + 1);
 }
 
 bool compareByColor(const Sink &a, const Sink &b) { return a.color < b.color; }
@@ -515,14 +547,14 @@ void displayParsedData() {
 int main() {
   int bound = 10;
   // Call parseInput to read and parse the input file
-  parseInput("allsamediffZ.txt");
+  parseInput("benchmark1.txt");
   // sortSinksByZ(sinks);
   //  Display parsed data
   displayParsedData();
 
   // Generate the 3D tree
   Node *root = AbsTreeGen3D(sinks, bound);
-  colorTree(root, dieColors);
+  colorTree(root, dieColors, clockSource);
   cout << "Number of Z-cuts performed: " << zCutCount << endl;
   // Print the sinks of generated tree
   cout << endl;
