@@ -28,14 +28,14 @@ struct TSVUnits {
   double capacitance;
 };
 struct ClockSource {
-  double x;
-  double y;
+  int x;
+  int y;
   int z;
   double outputResistance;
 };
 struct Sink {
-  double x;
-  double y;
+  int x;
+  int y;
   int z;
   double inputCapacitance;
   string color;
@@ -68,8 +68,8 @@ vector<string> dieColors = {"Gray",   "Red", "Green", "Blue",
 
 // Utility Functions
 // Function to calculate the median of x coordinates
-double calculateMedianX(const vector<Sink> &sinks) {
-  vector<double> xCoordinates;
+int calculateMedianX(const vector<Sink> &sinks) {
+  vector<int> xCoordinates;
   xCoordinates.reserve(sinks.size()); // Pre-allocate for efficiency
   for (const auto &sink : sinks) {
     xCoordinates.push_back(sink.x);
@@ -85,8 +85,8 @@ double calculateMedianX(const vector<Sink> &sinks) {
   }
 }
 // Function to calculate the median of y coordinates
-double calculateMedianY(const vector<Sink> &sinks) {
-  vector<double> yCoordinates;
+int calculateMedianY(const vector<Sink> &sinks) {
+  vector<int> yCoordinates;
   yCoordinates.reserve(sinks.size()); // Pre-allocate for efficiency
   for (const auto &sink : sinks) {
     yCoordinates.push_back(sink.y);
@@ -274,8 +274,8 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
     B1 = B2 = 1;
 
   } else {
-    double medianX = calculateMedianX(S);
-    double medianY = calculateMedianY(S);
+    int medianX = calculateMedianX(S);
+    int medianY = calculateMedianY(S);
     for (const auto &sink : S) {
       if (deltaX > deltaY) {
         if (sink.x < medianX) {
