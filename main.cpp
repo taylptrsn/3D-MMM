@@ -40,7 +40,7 @@ struct Sink {
   double inputCapacitance;
   string color;
   // Constructor with default sink color set to gray/uncolored
-  Sink(double x = 0, double y = 0, int z = 0, double inputCapacitance = 0,
+  Sink(int x = 0, int y = 0, int z = 0, double inputCapacitance = 0,
        string color = "Gray")
       : x(x), y(y), z(z), inputCapacitance(inputCapacitance), color(color) {}
 };
