@@ -49,9 +49,12 @@ struct Node {
   Node *leftChild;
   Node *rightChild;
   string color;
-  int dieIndex; // Added attribute for die index
-  Node(const vector<Sink> &sinks, string color = "Gray")
-      : sinks(sinks), leftChild(nullptr), rightChild(nullptr), color(color) {}
+  int dieIndex;       // Added attribute for die index
+  double capacitance; // Store the total capacitance of the node
+  Node(const vector<Sink> &sinks, string color = "Gray",
+       double capacitance = 0.0)
+      : sinks(sinks), leftChild(nullptr), rightChild(nullptr), color(color),
+        capacitance(capacitance) {}
 };
 
 // Global Variables
@@ -237,7 +240,7 @@ void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
 }
 
 Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
-  cout << "B " << B << endl;
+  //cout << "B " << B << endl;
   int B1 = 0;
   int B2 = 0;
   int deltaX = getMaxX(S) - getMinX(S);
@@ -293,8 +296,8 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
     }
     B1 = B / 2;
     B2 = B - B1;
-    cout << "B1 " << B1 << endl;
-    cout << "B2 " << B2 << endl;
+    //cout << "B1 " << B1 << endl;
+    //cout << "B2 " << B2 << endl;
   }
   /* cout << "St (Top most die group):" << endl;
   for (const auto &sink : St) {
@@ -328,28 +331,28 @@ void printTree(Node *node, int level = 0) {
     return; // Base case: if the node is null, return.
   }
 
-  string indent =
-      string(level * 8, ' '); // Increase indentation for each level.
+  string indent = string(level * 8, ' '); // Adjust indentation for each level.
 
   // Print the left branch (child) first.
   if (node->leftChild) {
     printTree(node->leftChild, level + 1);
   }
 
-  // Then, print the current node along with its color.
-  if (node->leftChild || node->rightChild) {
-    // For internal nodes, display their color (if applicable).
-    cout << indent << "Level " << level
-         << " - Internal Node, Color: " << node->color << endl;
-  } else {
-    // For leaf nodes, list all sinks and their colors.
-    cout << indent << "Level " << level << " - Sinks (Leaves):" << endl;
+  // Print the current node along with its color, memory address, and
+  // capacitance.
+  cout << indent << "Node at " << node << " - Level " << level
+       << " - Color: " << node->color
+       << " - Total Capacitance: " << node->capacitance << " fF" << endl;
+
+  // If the node is a leaf, also print its sinks.
+  if (!node->leftChild && !node->rightChild) {
     for (const auto &sink : node->sinks) {
-      cout << indent << "Sink: (" << sink.x << ", " << sink.y << ", " << sink.z
-           << "), Color: " << sink.color << endl;
+      cout << indent << "    Sink: (" << sink.x << ", " << sink.y << ", "
+           << sink.z << "), Input Capacitance: " << sink.inputCapacitance
+           << " fF, Color: " << sink.color << endl;
     }
   }
-  cout << endl;
+  cout<<endl;
   // Finally, print the right branch (child).
   if (node->rightChild) {
     printTree(node->rightChild, level + 1);
@@ -411,74 +414,6 @@ void colorTree(Node *node, const vector<string> &dieColors,
   // Recurse for child nodes with incremented depth
   colorTree(node->leftChild, dieColors, source, depth + 1);
   colorTree(node->rightChild, dieColors, source, depth + 1);
-}
-
-bool compareByColor(const Sink &a, const Sink &b) { return a.color < b.color; }
-void sortAndPrintSinksByColor(const vector<Sink> &sinks) {
-  vector<Sink> sortedSinks = sinks;
-  sort(sortedSinks.begin(), sortedSinks.end(), compareByColor);
-  cout << "Sinks sorted by color:" << endl;
-  for (const auto &sink : sortedSinks) {
-    cout << "Color: " << sink.color << " - Sink: (" << sink.x << ", " << sink.y
-         << ", " << sink.z << ")" << endl;
-  }
-}
-
-vector<Sink> getSinksByColor(const vector<Sink> &allSinks,
-                             const string &color) {
-  vector<Sink> sinksByColor;
-  for (const auto &sink : allSinks) {
-    if (sink.color == color) {
-      sinksByColor.push_back(sink);
-    }
-  }
-  return sinksByColor;
-}
-
-void collectSinks(const Node *node, vector<Sink> &allSinks) {
-  if (node == nullptr) {
-    return;
-  }
-  // If it's a leaf node, add its sinks to the collection
-  if (node->leftChild == nullptr && node->rightChild == nullptr) {
-    for (const auto &sink : node->sinks) {
-      allSinks.push_back(sink);
-    }
-  }
-  // Recurse on the left and right children
-  collectSinks(node->leftChild, allSinks);
-  collectSinks(node->rightChild, allSinks);
-}
-
-// Function to sort sinks by their z coordinate
-void sortSinksByZ(vector<Sink> &sinks) {
-  sort(sinks.begin(), sinks.end(),
-       [](const Sink &a, const Sink &b) { return a.z < b.z; });
-}
-
-void printOneSink(const Node *node) {
-  if (node == nullptr) {
-    return;
-  }
-  // Check if current node is a leaf node
-  if (node->leftChild == nullptr && node->rightChild == nullptr &&
-      !node->sinks.empty()) {
-    // Print the first sink in this leaf node
-    const auto &sink = node->sinks[0];
-    cout << "One Sink: (" << sink.x << ", " << sink.y << ", " << sink.z
-         << "), Input Capacitance - " << sink.inputCapacitance
-         << " fF, Color - " << sink.color << endl;
-    return; // Stop after printing one sink
-  } else {
-    // Recursively search for a leaf node in the left subtree first, then the
-    // right subtree
-    if (node->leftChild != nullptr) {
-      printOneSink(node->leftChild);
-    }
-    if (node->rightChild != nullptr) {
-      printOneSink(node->rightChild);
-    }
-  }
 }
 
 // Function to parse input from a file
@@ -544,11 +479,71 @@ void displayParsedData() {
   cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
 }
 
+/* double DFC(Node* node) { Case A: Sums capacitance while counting sinks both
+at root and at internal nodes if (!node) { return 0.0; // Base case: if the node
+is nullptr
+    }
+
+    double nodeCapacitance = 0.0;
+
+    // Only add the capacitance of all sinks in the current node if it has
+children if (node->leftChild || node->rightChild) { for (const auto& sink :
+node->sinks) { nodeCapacitance += sink.inputCapacitance;
+        }
+    }
+
+    // Recursively calculate for child nodes and add to the current node's
+capacitance double leftChildCapacitance = DFC(node->leftChild); double
+rightChildCapacitance = DFC(node->rightChild);
+
+    // Add the child nodes' capacitance to the current node's capacitance if
+they exist nodeCapacitance += leftChildCapacitance + rightChildCapacitance;
+
+    // Optional: Store the calculated capacitance in the node for later use
+    // This is useful if you want to use the node's capacitance value in other
+calculations
+    // node->capacitance = nodeCapacitance;
+
+    // Print the node's capacitance for verification, but only if it has
+children if (node->leftChild || node->rightChild) { std::cout << "Node at " <<
+node << " - Total Capacitance: " << nodeCapacitance << " fF" << std::endl;
+    }
+
+    return nodeCapacitance;
+} */
+
+double DFC(Node *node) {
+  if (!node) {
+    return 0.0; // Base case: if the node is nullptr
+  }
+
+  double nodeCapacitance = 0.0;
+
+  // Check if the node is a leaf node
+  if (!node->leftChild && !node->rightChild) {
+    for (const auto &sink : node->sinks) {
+      nodeCapacitance += sink.inputCapacitance;
+    }
+  } else {
+    nodeCapacitance += DFC(node->leftChild);
+    nodeCapacitance += DFC(node->rightChild);
+  }
+
+  // Store the calculated capacitance in the node
+  node->capacitance = nodeCapacitance;
+  
+  //cout<<endl;
+  // Print the node's capacitance for verification
+  //std::cout << "Node at " << node << " - Total Capacitance: " << nodeCapacitance
+  //          << " fF" << std::endl;
+
+  return nodeCapacitance;
+}
+
 int main() {
   int bound = 10;
   // Call parseInput to read and parse the input file
   parseInput("benchmark1.txt");
-  // sortSinksByZ(sinks);
   //  Display parsed data
   displayParsedData();
 
@@ -560,19 +555,11 @@ int main() {
   cout << endl;
   cout << "Sinks of Abstract Tree:" << endl;
   printLeaves(root);
-
+  DFC(root);
   // Print the generated tree
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
-
-  // Assign colors to sinks in the tree
-  // colorTree(root, dieColors);
-  // Collect all sinks
-  vector<Sink> allSinks;
-  collectSinks(root, allSinks);
-  cout << endl;
-  sortAndPrintSinksByColor(allSinks);
 
   // Clean up memory
   deleteTree(root);
