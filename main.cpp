@@ -483,148 +483,56 @@ void displayParsedData() {
   cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
 }
 
-/* double DFC(Node* node) { Case A: Sums capacitance while counting sinks both
-at root and at internal nodes if (!node) { return 0.0; // Base case: if the node
-is nullptr
-    }
+// Updated depthFirstCapacitance function to ensure it calculates and stores capacitance correctly
+double depthFirstCapacitance(Node* node) {
+    if (!node) return 0.0; // Base case
 
     double nodeCapacitance = 0.0;
 
-    // Only add the capacitance of all sinks in the current node if it has
-children if (node->leftChild || node->rightChild) { for (const auto& sink :
-node->sinks) { nodeCapacitance += sink.inputCapacitance;
+    // Calculate total capacitance for non-leaf nodes recursively
+    if (node->leftChild) nodeCapacitance += depthFirstCapacitance(node->leftChild);
+    if (node->rightChild) nodeCapacitance += depthFirstCapacitance(node->rightChild);
+
+    // Add capacitance of the current node (for leaf nodes, sum the capacitances of all sinks in the node)
+    if (!node->leftChild && !node->rightChild) {
+        for (const auto& sink : node->sinks) {
+            nodeCapacitance += sink.inputCapacitance;
         }
     }
-
-    // Recursively calculate for child nodes and add to the current node's
-capacitance double leftChildCapacitance = DFC(node->leftChild); double
-rightChildCapacitance = DFC(node->rightChild);
-
-    // Add the child nodes' capacitance to the current node's capacitance if
-they exist nodeCapacitance += leftChildCapacitance + rightChildCapacitance;
-
-    // Optional: Store the calculated capacitance in the node for later use
-    // This is useful if you want to use the node's capacitance value in other
-calculations
-    // node->capacitance = nodeCapacitance;
-
-    // Print the node's capacitance for verification, but only if it has
-children if (node->leftChild || node->rightChild) { std::cout << "Node at " <<
-node << " - Total Capacitance: " << nodeCapacitance << " fF" << std::endl;
-    }
+    node->capacitance = nodeCapacitance; // Store the calculated capacitance at the current node
 
     return nodeCapacitance;
-} */
-
-double depthFirstCapacitance(Node *node) {
-  if (!node) {
-    return 0.0; // Base case: if the node is nullptr
-  }
-
-  double nodeCapacitance = 0.0;
-
-  // Check if the node is a leaf node
-  if (!node->leftChild && !node->rightChild) {
-    for (const auto &sink : node->sinks) {
-      nodeCapacitance += sink.inputCapacitance;
-    }
-  } else {
-    nodeCapacitance += depthFirstCapacitance(node->leftChild);
-    nodeCapacitance += depthFirstCapacitance(node->rightChild);
-  }
-
-  // Store the calculated capacitance in the node
-  node->capacitance = nodeCapacitance;
-
-  // cout<<endl;
-  //  Print the node's capacitance for verification
-  // std::cout << "Node at " << node << " - Total Capacitance: " <<
-  // nodeCapacitance
-  //           << " fF" << std::endl;
-
-  return nodeCapacitance;
 }
 
-/*
-// New function to calculate Elmore delay for each node
-void calculateElmoreDelay(Node *node, double parentResistance = 0.0) {
-    if (!node) return; // Base case
+// Ensure depthFirstDelay function is correctly implemented as per your existing logic
+void depthFirstDelay(Node* node, double accumulatedResistance) {
+    if (!node) return; // Base case: node is null
 
-    // For the root node, add the clock source's output resistance to the
-initial resistance double initialResistance = (parentResistance == 0.0) ?
-clockSource.outputResistance : parentResistance;
+    // Calculate the total resistance from the root to this node
+    double totalResistance = accumulatedResistance + node->resistance;
 
-    // Calculate the resistance from the root to this node, including buffer
-output resistance if the node has children double totalResistance =
-initialResistance + (node->leftChild || node->rightChild ?
-bufferUnits.outputResistance : 0.0); node->resistance = totalResistance;
-
-    // Recursively calculate for child nodes, passing the total resistance so
-far if (node->leftChild) calculateElmoreDelay(node->leftChild, totalResistance);
-    if (node->rightChild) calculateElmoreDelay(node->rightChild,
-totalResistance);
-
-    // If it's a leaf node, calculate Elmore delay based on the node's
-capacitance if (!node->leftChild && !node->rightChild) { node->elmoreDelay =
-node->resistance * node->capacitance; } else {
-        // For non-leaf nodes, sum the capacitances of all descendant leaf nodes
-        double totalCapacitance = DFC(node); // Assuming DFC calculates total
-capacitance of descendants node->elmoreDelay = node->resistance *
-totalCapacitance;
+    // For leaf nodes, calculate delay directly
+    if (!node->leftChild && !node->rightChild) {
+        node->elmoreDelay = totalResistance * node->capacitance;
+    } else {
+        // For internal nodes, delay is calculated based on the subtree capacitance (already updated by depthFirstCapacitance)
+        double subtreeCapacitance = node->capacitance; // Assuming updated by depthFirstCapacitance
+        node->elmoreDelay = totalResistance * subtreeCapacitance;
     }
-} */
 
-void depthFirstDelay(Node *node, double accumulatedResistance = 0.0) {
-  if (!node)
-    return; // Base case: node is null
-
-  // Calculate the total resistance from the root to this node
-  // Include the resistance of the current node (if applicable)
-  double totalResistance = accumulatedResistance + node->resistance;
-
-  // Initialize delay for this node with the product of its total resistance and
-  // its own capacitance
-  double delay = totalResistance * node->capacitance;
-  node->elmoreDelay = delay; // Store the calculated delay at the current node
-
-  // Iterate over the child nodes to calculate delay recursively
-  if (node->leftChild) {
-    depthFirstDelay(node->leftChild, totalResistance);
-  }
-  if (node->rightChild) {
-    depthFirstDelay(node->rightChild, totalResistance);
-  }
+    // Recursively calculate delay for child nodes
+    if (node->leftChild) depthFirstDelay(node->leftChild, totalResistance);
+    if (node->rightChild) depthFirstDelay(node->rightChild, totalResistance);
 }
 
-/*
-  // Modified DFC to calculate Elmore Delay and store capacitance at each node
-  double DFC(Node *node) {
-    if (!node) {
-      return 0.0; // Base case: if the node is nullptr
-    }
+// Function to calculate hierarchical delay for the entire tree
+void hierarchicalDelay(Node* node) {
+    // First, calculate the total capacitance starting from the root
+    depthFirstCapacitance(node);
 
-    double nodeDelay = 0.0;
-
-    // Calculate the delay contribution from the sinks in the current node
-    for (const auto &sink : node->sinks) {
-      nodeDelay += sink.inputCapacitance * bufferUnits.outputResistance *
-                   bufferUnits.intrinsicDelay / 2.0;
-    }
-
-    // Calculate delay contributions from the child nodes recursively
-    double leftChildDelay = DFC(node->leftChild);
-    double rightChildDelay = DFC(node->rightChild);
-
-    // Add delays from child nodes and their respective wires
-    nodeDelay += leftChildDelay + rightChildDelay +
-                 (node->capacitance * wireUnits.resistance *
-                  bufferUnits.outputResistance / 2.0);
-
-    // Store the calculated Elmore delay at the node
-    node->elmoreDelay = nodeDelay;
-
-    return nodeDelay;
-  } */
+    // Then, calculate the delay based on the updated capacitance values, starting from the root with the clock source's resistance
+    depthFirstDelay(node, clockSource.outputResistance);
+}
 
 int main() {
   int bound = 10;
@@ -641,10 +549,8 @@ int main() {
   cout << endl;
   cout << "Sinks of Abstract Tree:" << endl;
   printLeaves(root);
-  depthFirstCapacitance(root);
-  // Calculate depth-first delays starting from the root, with initial
-  // resistance as that of the clock source
-  depthFirstDelay(root, clockSource.outputResistance);
+  // Calculate hierarchical delays for the tree
+  hierarchicalDelay(root);
   // Print the generated tree
   cout << endl;
   cout << "Abstract Tree:" << endl;
