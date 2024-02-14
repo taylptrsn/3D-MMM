@@ -44,17 +44,20 @@ struct Sink {
        string color = "Gray")
       : x(x), y(y), z(z), inputCapacitance(inputCapacitance), color(color) {}
 };
+// Modified Node structure to include resistance (if not already included)
 struct Node {
   vector<Sink> sinks;
   Node *leftChild;
   Node *rightChild;
   string color;
-  int dieIndex;       // Added attribute for die index
-  double capacitance; // Store the total capacitance of the node
+  int dieIndex;       // Existing attribute
+  double capacitance; // Existing attribute
+  double resistance;  // Added attribute for resistance from root to this node
+  double elmoreDelay; // Existing attribute
   Node(const vector<Sink> &sinks, string color = "Gray",
-       double capacitance = 0.0)
+       double capacitance = 0.0, double resistance = 0.0)
       : sinks(sinks), leftChild(nullptr), rightChild(nullptr), color(color),
-        capacitance(capacitance) {}
+        capacitance(capacitance), resistance(resistance) {}
 };
 
 // Global Variables
@@ -240,7 +243,7 @@ void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
 }
 
 Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
-  //cout << "B " << B << endl;
+  // cout << "B " << B << endl;
   int B1 = 0;
   int B2 = 0;
   int deltaX = getMaxX(S) - getMinX(S);
@@ -296,8 +299,8 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
     }
     B1 = B / 2;
     B2 = B - B1;
-    //cout << "B1 " << B1 << endl;
-    //cout << "B2 " << B2 << endl;
+    // cout << "B1 " << B1 << endl;
+    // cout << "B2 " << B2 << endl;
   }
   /* cout << "St (Top most die group):" << endl;
   for (const auto &sink : St) {
@@ -338,11 +341,12 @@ void printTree(Node *node, int level = 0) {
     printTree(node->leftChild, level + 1);
   }
 
-  // Print the current node along with its color, memory address, and
-  // capacitance.
+  // Print the current node along with its color, memory address, capacitance,
+  // and Elmore delay.
   cout << indent << "Node at " << node << " - Level " << level
        << " - Color: " << node->color
-       << " - Total Capacitance: " << node->capacitance << " fF" << endl;
+       << " - Total Capacitance: " << node->capacitance << " fF"
+       << " - Elmore Delay: " << node->elmoreDelay << " fs" << endl;
 
   // If the node is a leaf, also print its sinks.
   if (!node->leftChild && !node->rightChild) {
@@ -352,7 +356,7 @@ void printTree(Node *node, int level = 0) {
            << " fF, Color: " << sink.color << endl;
     }
   }
-  cout<<endl;
+  cout << endl;
   // Finally, print the right branch (child).
   if (node->rightChild) {
     printTree(node->rightChild, level + 1);
@@ -512,7 +516,7 @@ node << " - Total Capacitance: " << nodeCapacitance << " fF" << std::endl;
     return nodeCapacitance;
 } */
 
-double DFC(Node *node) {
+double depthFirstCapacitance(Node *node) {
   if (!node) {
     return 0.0; // Base case: if the node is nullptr
   }
@@ -525,20 +529,102 @@ double DFC(Node *node) {
       nodeCapacitance += sink.inputCapacitance;
     }
   } else {
-    nodeCapacitance += DFC(node->leftChild);
-    nodeCapacitance += DFC(node->rightChild);
+    nodeCapacitance += depthFirstCapacitance(node->leftChild);
+    nodeCapacitance += depthFirstCapacitance(node->rightChild);
   }
 
   // Store the calculated capacitance in the node
   node->capacitance = nodeCapacitance;
-  
-  //cout<<endl;
-  // Print the node's capacitance for verification
-  //std::cout << "Node at " << node << " - Total Capacitance: " << nodeCapacitance
-  //          << " fF" << std::endl;
+
+  // cout<<endl;
+  //  Print the node's capacitance for verification
+  // std::cout << "Node at " << node << " - Total Capacitance: " <<
+  // nodeCapacitance
+  //           << " fF" << std::endl;
 
   return nodeCapacitance;
 }
+
+/*
+// New function to calculate Elmore delay for each node
+void calculateElmoreDelay(Node *node, double parentResistance = 0.0) {
+    if (!node) return; // Base case
+
+    // For the root node, add the clock source's output resistance to the
+initial resistance double initialResistance = (parentResistance == 0.0) ?
+clockSource.outputResistance : parentResistance;
+
+    // Calculate the resistance from the root to this node, including buffer
+output resistance if the node has children double totalResistance =
+initialResistance + (node->leftChild || node->rightChild ?
+bufferUnits.outputResistance : 0.0); node->resistance = totalResistance;
+
+    // Recursively calculate for child nodes, passing the total resistance so
+far if (node->leftChild) calculateElmoreDelay(node->leftChild, totalResistance);
+    if (node->rightChild) calculateElmoreDelay(node->rightChild,
+totalResistance);
+
+    // If it's a leaf node, calculate Elmore delay based on the node's
+capacitance if (!node->leftChild && !node->rightChild) { node->elmoreDelay =
+node->resistance * node->capacitance; } else {
+        // For non-leaf nodes, sum the capacitances of all descendant leaf nodes
+        double totalCapacitance = DFC(node); // Assuming DFC calculates total
+capacitance of descendants node->elmoreDelay = node->resistance *
+totalCapacitance;
+    }
+} */
+
+void depthFirstDelay(Node *node, double accumulatedResistance = 0.0) {
+  if (!node)
+    return; // Base case: node is null
+
+  // Calculate the total resistance from the root to this node
+  // Include the resistance of the current node (if applicable)
+  double totalResistance = accumulatedResistance + node->resistance;
+
+  // Initialize delay for this node with the product of its total resistance and
+  // its own capacitance
+  double delay = totalResistance * node->capacitance;
+  node->elmoreDelay = delay; // Store the calculated delay at the current node
+
+  // Iterate over the child nodes to calculate delay recursively
+  if (node->leftChild) {
+    depthFirstDelay(node->leftChild, totalResistance);
+  }
+  if (node->rightChild) {
+    depthFirstDelay(node->rightChild, totalResistance);
+  }
+}
+
+/*
+  // Modified DFC to calculate Elmore Delay and store capacitance at each node
+  double DFC(Node *node) {
+    if (!node) {
+      return 0.0; // Base case: if the node is nullptr
+    }
+
+    double nodeDelay = 0.0;
+
+    // Calculate the delay contribution from the sinks in the current node
+    for (const auto &sink : node->sinks) {
+      nodeDelay += sink.inputCapacitance * bufferUnits.outputResistance *
+                   bufferUnits.intrinsicDelay / 2.0;
+    }
+
+    // Calculate delay contributions from the child nodes recursively
+    double leftChildDelay = DFC(node->leftChild);
+    double rightChildDelay = DFC(node->rightChild);
+
+    // Add delays from child nodes and their respective wires
+    nodeDelay += leftChildDelay + rightChildDelay +
+                 (node->capacitance * wireUnits.resistance *
+                  bufferUnits.outputResistance / 2.0);
+
+    // Store the calculated Elmore delay at the node
+    node->elmoreDelay = nodeDelay;
+
+    return nodeDelay;
+  } */
 
 int main() {
   int bound = 10;
@@ -555,7 +641,10 @@ int main() {
   cout << endl;
   cout << "Sinks of Abstract Tree:" << endl;
   printLeaves(root);
-  DFC(root);
+  depthFirstCapacitance(root);
+  // Calculate depth-first delays starting from the root, with initial
+  // resistance as that of the clock source
+  depthFirstDelay(root, clockSource.outputResistance);
   // Print the generated tree
   cout << endl;
   cout << "Abstract Tree:" << endl;
