@@ -5,59 +5,72 @@
 #include <iostream>
 #include <limits>
 #include <vector>
-
+/* TODO
+- Unit Conversion
+*/
 using namespace std;
 
 // Structure Definitions
 struct Layout {
-  double width;
-  double height;
-  int numDies;
+  double width;  // Unit: micrometers (um)
+  double height; // Unit: micrometers (um)
+  int numDies;   // Unit: None, simply a count
 };
+
 struct WireUnits {
-  double resistance;
-  double capacitance;
+  double resistance;  // Unit: ohms per micrometer (ohm/um)
+  double capacitance; // Unit: femtofarads per micrometer (fF/um)
 };
+
 struct BufferUnits {
-  double outputResistance;
-  double inputCapacitance;
-  double intrinsicDelay;
+  double outputResistance; // Unit: ohms (ohm)
+  double inputCapacitance; // Unit: femtofarads (fF)
+  double intrinsicDelay;   // Unit: picoseconds (ps)
 };
+
 struct TSVUnits {
-  double resistance;
-  double capacitance;
+  double resistance;  // Unit: ohms (ohm)
+  double capacitance; // Unit: femtofarads (fF)
 };
+
 struct ClockSource {
-  int x;
-  int y;
-  int z;
-  double outputResistance;
+  int x;                   // Unit: None, coordinates in an unspecified grid
+  int y;                   // Unit: None, coordinates in an unspecified grid
+  int z;                   // Unit: None, coordinates in an unspecified grid
+  double outputResistance; // Unit: ohms (ohm)
 };
+
 struct Sink {
-  int x;
-  int y;
-  int z;
-  double inputCapacitance;
-  string color;
+  int x;                   // Unit: None, coordinates in an unspecified grid
+  int y;                   // Unit: None, coordinates in an unspecified grid
+  int z;                   // Unit: None, coordinates in an unspecified grid
+  double inputCapacitance; // Unit: femtofarads (fF)
+  string color;            // Unit: None, simply a descriptive string
   // Constructor with default sink color set to gray/uncolored
   Sink(int x = 0, int y = 0, int z = 0, double inputCapacitance = 0,
        string color = "Gray")
       : x(x), y(y), z(z), inputCapacitance(inputCapacitance), color(color) {}
 };
-// Modified Node structure to include resistance (if not already included)
+
 struct Node {
-  vector<Sink> sinks;
+  vector<Sink> sinks; // Contains multiple sinks, each with their own units
   Node *leftChild;
   Node *rightChild;
   string color;
-  int dieIndex;       // Existing attribute
-  double capacitance; // Existing attribute
-  double resistance;  // Added attribute for resistance from root to this node
-  double elmoreDelay; // Existing attribute
+  int dieIndex;       // None, simply a count
+  double capacitance; // femtofarads (fF)
+  double resistance;  // ohms (ohm), added attribute for resistance from root to
+                      // this node
+  double elmoreDelay; // picoseconds (ps), existing attribute
+  bool isBuffered; // Indicates if the node is a buffered node, default is false
+
+  // Updated constructor to include isBuffered with a default value of false
   Node(const vector<Sink> &sinks, string color = "Gray",
-       double capacitance = 0.0, double resistance = 0.0)
+       double capacitance = 0.0, double resistance = 0.0,
+       bool isBuffered = false)
       : sinks(sinks), leftChild(nullptr), rightChild(nullptr), color(color),
-        capacitance(capacitance), resistance(resistance) {}
+        capacitance(capacitance), resistance(resistance),
+        isBuffered(isBuffered) {}
 };
 
 // Global Variables
@@ -69,8 +82,8 @@ ClockSource clockSource;
 int numSinks;
 int zCutCount = 0; // Keeps track of the number of Z-cuts performed
 vector<Sink> sinks;
-vector<string> dieColors = {"Gray",   "Red", "Green", "Blue",
-                            "Purple", "Lime"}; //  Define colors for dies
+vector<string> dieColors = {"Gray", "Red",    "Green",
+                            "Blue", "Purple", "Lime"}; // Define colors for dies
 
 // Utility Functions
 // Function to calculate the median of x coordinates
@@ -483,57 +496,150 @@ void displayParsedData() {
   cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
 }
 
-// Updated depthFirstCapacitance function to ensure it calculates and stores capacitance correctly
-double depthFirstCapacitance(Node* node) {
-    if (!node) return 0.0; // Base case
+// Updated depthFirstCapacitance function to ensure it calculates and stores
+// capacitance correctly
+double depthFirstCapacitance(Node *node) {
+  if (!node)
+    return 0.0; // Base case
 
-    double nodeCapacitance = 0.0;
+  double nodeCapacitance = 0.0;
 
+  // If the current node is a buffer input node, only add its capacitance
+  if (node->isBuffered) {
+    // Assuming the node's capacitance includes its own and not its children's
+    nodeCapacitance += node->capacitance;
+  } else {
     // Calculate total capacitance for non-leaf nodes recursively
-    if (node->leftChild) nodeCapacitance += depthFirstCapacitance(node->leftChild);
-    if (node->rightChild) nodeCapacitance += depthFirstCapacitance(node->rightChild);
+    if (node->leftChild)
+      nodeCapacitance += depthFirstCapacitance(node->leftChild);
+    if (node->rightChild)
+      nodeCapacitance += depthFirstCapacitance(node->rightChild);
 
-    // Add capacitance of the current node (for leaf nodes, sum the capacitances of all sinks in the node)
+    // Add capacitance of the current node (for leaf nodes, sum the capacitances
+    // of all sinks in the node)
     if (!node->leftChild && !node->rightChild) {
-        for (const auto& sink : node->sinks) {
-            nodeCapacitance += sink.inputCapacitance;
-        }
+      for (const auto &sink : node->sinks) {
+        nodeCapacitance += sink.inputCapacitance;
+      }
     }
-    node->capacitance = nodeCapacitance; // Store the calculated capacitance at the current node
+  }
+  node->capacitance =
+      nodeCapacitance; // Store the calculated capacitance at the current node
 
-    return nodeCapacitance;
+  return nodeCapacitance;
 }
 
-// Ensure depthFirstDelay function is correctly implemented as per your existing logic
-void depthFirstDelay(Node* node, double accumulatedResistance) {
-    if (!node) return; // Base case: node is null
+void depthFirstDelay(Node *node, double accumulatedResistance) {
+  if (!node)
+    return; // Base case: node is null
 
-    // Calculate the total resistance from the root to this node
-    double totalResistance = accumulatedResistance + node->resistance;
+  // Calculate the total resistance from the root to this node
+  double totalResistance = accumulatedResistance + node->resistance;
+  double delay = 0.0; // Initialize delay calculation variable
 
-    // For leaf nodes, calculate delay directly
-    if (!node->leftChild && !node->rightChild) {
-        node->elmoreDelay = totalResistance * node->capacitance;
-    } else {
-        // For internal nodes, delay is calculated based on the subtree capacitance (already updated by depthFirstCapacitance)
-        double subtreeCapacitance = node->capacitance; // Assuming updated by depthFirstCapacitance
-        node->elmoreDelay = totalResistance * subtreeCapacitance;
-    }
+  // If the node is buffered, add the buffer delay to the node's delay
+  // calculation
+  if (node->isBuffered) {
+    // MAY BE WRONG intrinsicdelay=17000 fS
+    delay = bufferUnits.intrinsicDelay; //+(bufferUnits.outputResistance *
+                                        // node->capacitance);
+  }
 
-    // Recursively calculate delay for child nodes
-    if (node->leftChild) depthFirstDelay(node->leftChild, totalResistance);
-    if (node->rightChild) depthFirstDelay(node->rightChild, totalResistance);
+  // For leaf nodes, calculate delay directly
+  if (!node->leftChild && !node->rightChild) {
+    node->elmoreDelay = totalResistance * node->capacitance + delay;
+  } else {
+    // For internal nodes, delay is calculated based on the subtree capacitance
+    // (already updated by depthFirstCapacitance)
+    double subtreeCapacitance =
+        node->capacitance; // Assuming updated by depthFirstCapacitance
+    node->elmoreDelay = totalResistance * subtreeCapacitance + delay;
+  }
+
+  // Recursively calculate delay for child nodes, passing the total accumulated
+  // resistance to each child
+  if (node->leftChild)
+    depthFirstDelay(node->leftChild, totalResistance);
+  if (node->rightChild)
+    depthFirstDelay(node->rightChild, totalResistance);
 }
 
 // Function to calculate hierarchical delay for the entire tree
-void hierarchicalDelay(Node* node) {
-    // First, calculate the total capacitance starting from the root
-    depthFirstCapacitance(node);
+void hierarchicalDelay(Node *node) {
+  // First, calculate the total capacitance starting from the root
+  depthFirstCapacitance(node);
 
-    // Then, calculate the delay based on the updated capacitance values, starting from the root with the clock source's resistance
-    depthFirstDelay(node, clockSource.outputResistance);
+  // Then, calculate the delay based on the updated capacitance values, starting
+  // from the root with the clock source's resistance
+  depthFirstDelay(node, clockSource.outputResistance);
 }
 
+#include <cmath> // Include cmath for sqrt function
+
+// Function to calculate the Zero Skew Merging point and adjust wire length for
+// zero skew
+double ZeroSkewMerge(double delaySegment1, double delaySegment2,
+                     double resistancePerUnitLength, double lengthOfWire,
+                     double capacitanceSegment1, double capacitanceSegment2,
+                     double capacitancePerUnitLength) {
+  // Calculate the initial merging point x
+  double numerator = (delaySegment2 - delaySegment1) +
+                     resistancePerUnitLength * lengthOfWire *
+                         (capacitanceSegment2 + (capacitancePerUnitLength / 2));
+  double denominator =
+      resistancePerUnitLength * lengthOfWire *
+      (capacitancePerUnitLength + capacitanceSegment1 + capacitanceSegment2);
+  double mergingPointX = numerator / denominator;
+
+  // Check if mergingPointX is outside the [0,1] range and calculate l' if
+  // needed
+  if (mergingPointX >= 0 && mergingPointX <= 1) {
+    return mergingPointX;
+  } else {
+    // Calculate l' based on the condition for x
+    double lPrime = 0;
+    if (mergingPointX > 1) {
+      // For x > 1
+      lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment1, 2) +
+                     2 * resistancePerUnitLength * capacitancePerUnitLength *
+                         (delaySegment2 - delaySegment1)) -
+                resistancePerUnitLength * capacitanceSegment1) /
+               (resistancePerUnitLength * capacitancePerUnitLength);
+    } else {
+      // For x < 1
+      lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment2, 2) +
+                     2 * resistancePerUnitLength * capacitancePerUnitLength *
+                         (delaySegment1 - delaySegment2)) -
+                resistancePerUnitLength * capacitanceSegment2) /
+               (resistancePerUnitLength * capacitancePerUnitLength);
+    }
+
+    // Adjust lengthOfWire based on lPrime calculation
+    lengthOfWire += lPrime;
+    // "manhattan merge point" = (x*deltax),(y*deltay) rounded to integer?
+    return lengthOfWire;
+  }
+}
+/*
+zeroSkewTree{
+s= number of clock tree stages
+if (s==0){
+ return zst;
+}
+
+For each subtree in stage s {
+    Treat each clock in in subtree as a merging point
+    for each clock in subtree, repeat S3.2 and S3.3 until there is only one
+merging point left
+
+   Pair merging points (3.2)
+   For each pair perform Zero Skew merge and determine the new merge point (3.3)
+    if there is only one merging point left, return it
+
+}
+   s=s-1;
+}
+*/
 int main() {
   int bound = 10;
   // Call parseInput to read and parse the input file
