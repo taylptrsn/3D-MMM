@@ -53,6 +53,7 @@ struct Sink {
 };
 
 struct Node {
+  int id;             // Added id field to store unique identifier for each node
   vector<Sink> sinks; // Contains multiple sinks, each with their own units
   Node *leftChild;
   Node *rightChild;
@@ -64,15 +65,15 @@ struct Node {
   double elmoreDelay; // picoseconds (ps), existing attribute
   bool isBuffered; // Indicates if the node is a buffered node, default is false
 
-  // Updated constructor to include isBuffered with a default value of false
+  // Updated constructor to include id with a default value of 0 (will be
+  // assigned properly during node creation)
   Node(const vector<Sink> &sinks, string color = "Gray",
        double capacitance = 0.0, double resistance = 0.0,
-       bool isBuffered = false)
-      : sinks(sinks), leftChild(nullptr), rightChild(nullptr), color(color),
-        capacitance(capacitance), resistance(resistance),
+       bool isBuffered = false, int id = 0) // Added id parameter
+      : id(id), sinks(sinks), leftChild(nullptr), rightChild(nullptr),
+        color(color), capacitance(capacitance), resistance(resistance),
         isBuffered(isBuffered) {}
 };
-
 // Global Variables
 Layout layout;
 WireUnits wireUnits;
@@ -80,6 +81,7 @@ BufferUnits bufferUnits;
 TSVUnits tsvUnits;
 ClockSource clockSource;
 int numSinks;
+int nodeID = 0;    // Global variable to keep track of the next node ID
 int zCutCount = 0; // Keeps track of the number of Z-cuts performed
 vector<Sink> sinks;
 vector<string> dieColors = {"Gray", "Red",    "Green",
@@ -266,7 +268,10 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
   ClockSource Zs = clockSource;
   if (S.size() == 1) {
     // Base case: if die span = 1, 2d tree
-    return new Node(S);
+
+    return new Node(S, "Gray", 0.0, 0.0, false,
+                    nodeID++); // Assign a unique id to the node
+
     //} else if (deltaZ > 1 && B==1) {
   } else if (deltaX == 0 && deltaY == 0 && deltaZ >= 1) {
     // New condition for the edge case where all x and y are the same, but z
@@ -327,7 +332,9 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
          << ")(x,y,z), Input Capacitance - " << sink.inputCapacitance << " fF"
          << endl;
   } */
-  Node *root = new Node(S);
+  Node *root = new Node(S, "Gray", 0.0, 0.0, false,
+                        nodeID++); // Assign a unique id to the node
+
   root->leftChild = AbsTreeGen3D(St, B1);
   root->rightChild = AbsTreeGen3D(Sb, B2);
   return root;
@@ -356,7 +363,7 @@ void printTree(Node *node, int level = 0) {
 
   // Print the current node along with its color, memory address, capacitance,
   // and Elmore delay.
-  cout << indent << "Node at " << node << " - Level " << level
+  cout << indent << "Node at position " << node->id << " -  Depth " << level
        << " - Color: " << node->color
        << " - Total Capacitance: " << node->capacitance << " fF"
        << " - Elmore Delay: " << node->elmoreDelay << " fs" << endl;
@@ -615,11 +622,40 @@ double ZeroSkewMerge(double delaySegment1, double delaySegment2,
     }
 
     // Adjust lengthOfWire based on lPrime calculation
-    lengthOfWire += lPrime;
     // "manhattan merge point" = (x*deltax),(y*deltay) rounded to integer?
+    lengthOfWire += lPrime; // lPrime+manhattan merge point
+
     return lengthOfWire;
   }
 }
+
+// Function to find a node by its id in the tree and calculate its hierarchical
+// delay
+void calculateHierarchicalDelayForNode(Node *root, int selectedNodeId) {
+  // Base case: if the tree is empty or we reach a leaf node without finding the
+  // selected node
+  if (root == nullptr) {
+    return;
+  }
+
+  // Check if the current node is the one we're looking for
+  if (root->id == selectedNodeId) {
+    // Calculate the hierarchical delay for this node
+    // First, calculate the total capacitance for this node and its subtree
+    hierarchicalDelay(root);
+    cout << "Hierarchical delay calculated for node " << selectedNodeId << "."
+         << endl;
+    // Optionally, print out the delay or perform further actions as needed
+    cout << "Total Capacitance: " << root->capacitance << " fF" << endl;
+    cout << "Elmore Delay: " << root->elmoreDelay << " ps" << endl;
+    return;
+  }
+
+  // Recursively search in the left and right subtrees
+  calculateHierarchicalDelayForNode(root->leftChild, selectedNodeId);
+  calculateHierarchicalDelayForNode(root->rightChild, selectedNodeId);
+}
+
 /*
 zeroSkewTree{
 s= number of clock tree stages
@@ -661,6 +697,9 @@ int main() {
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
+
+  int selectedNodeId = 1; // Example node ID
+  calculateHierarchicalDelayForNode(root, selectedNodeId);
 
   // Clean up memory
   deleteTree(root);
