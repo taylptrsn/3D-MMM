@@ -447,10 +447,10 @@ int calculateManhattanDistance(Node *root, int id1, int id2) {
   // the calculation
   int x1 = node1->sinks.front().x;
   int y1 = node1->sinks.front().y;
-  //int z1 = node1->sinks.front().z;
+  // int z1 = node1->sinks.front().z;
   int x2 = node2->sinks.front().x;
   int y2 = node2->sinks.front().y;
-  //int z2 = node2->sinks.front().z;
+  // int z2 = node2->sinks.front().z;
   return abs(x2 - x1) + abs(y2 - y1); // Manhattan distance  + abs(z2 - z1)
 }
 
@@ -668,7 +668,8 @@ void zeroSkewTree {
  }
  for each subtree in stage s{
   Treat each clock pin in subtree as a merging point
-  for each clock in subtree, repeat S3.2 and S3.3 until there is only one merging point left
+  for each clock in subtree, repeat S3.2 and S3.3 until there is only one
+merging point left
 
   pair merging points (3.2)
   For each pair, determine merging point with zero skew merge (3.3)
@@ -698,12 +699,13 @@ int main() {
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
-  //cout<<"man "<<calculateManhattanDistance(root,3,4)<<endl;
+  // cout<<"man "<<calculateManhattanDistance(root,3,4)<<endl;
   cout << "ZSM "
-       << ZeroSkewMerge(getNodeDelay(root, 3),
-                        getNodeDelay(root, 4),
-                        wireUnits.resistance, calculateManhattanDistance(root,3,4), getNodeCapacitance(root, 3),
-                        getNodeCapacitance(root,4), wireUnits.capacitance)
+       << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
+                        wireUnits.resistance,
+                        calculateManhattanDistance(root, 3, 4),
+                        getNodeCapacitance(root, 3),
+                        getNodeCapacitance(root, 4), wireUnits.capacitance)
        << endl;
   // Clean up memory
   deleteTree(root);
