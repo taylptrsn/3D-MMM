@@ -268,7 +268,6 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
   ClockSource Zs = clockSource;
   if (S.size() == 1) {
     // Base case: if die span = 1, 2d tree
-
     return new Node(S, "Gray", 0.0, 0.0, false,
                     nodeID++); // Assign a unique id to the node
 
@@ -317,21 +316,7 @@ Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
     }
     B1 = B / 2;
     B2 = B - B1;
-    // cout << "B1 " << B1 << endl;
-    // cout << "B2 " << B2 << endl;
   }
-  /* cout << "St (Top most die group):" << endl;
-  for (const auto &sink : St) {
-    cout << "(" << sink.x << "," << sink.y << "," << sink.z
-         << ")(x,y,z), Input Capacitance - " << sink.inputCapacitance << " fF"
-         << endl;
-  }
-  cout << "Sb (Bottom most die group):" << endl;
-  for (const auto &sink : Sb) {
-    cout << "(" << sink.x << "," << sink.y << "," << sink.z
-         << ")(x,y,z), Input Capacitance - " << sink.inputCapacitance << " fF"
-         << endl;
-  } */
   Node *root = new Node(S, "Gray", 0.0, 0.0, false,
                         nodeID++); // Assign a unique id to the node
 
@@ -353,14 +338,11 @@ void printTree(Node *node, int level = 0) {
   if (!node) {
     return; // Base case: if the node is null, return.
   }
-
   string indent = string(level * 8, ' '); // Adjust indentation for each level.
-
   // Print the left branch (child) first.
   if (node->leftChild) {
     printTree(node->leftChild, level + 1);
   }
-
   // Print the current node along with its color, memory address, capacitance,
   // and Elmore delay.
   cout << indent << "Node at position " << node->id << " -  Depth " << level
@@ -377,7 +359,6 @@ void printTree(Node *node, int level = 0) {
     }
   }
   cout << endl;
-  // Finally, print the right branch (child).
   if (node->rightChild) {
     printTree(node->rightChild, level + 1);
   }
@@ -405,7 +386,6 @@ void colorTree(Node *node, const vector<string> &dieColors,
   if (node == nullptr) {
     return;
   }
-
   // Determine the color of the source based on its z-coordinate
   string sourceColor = dieColors[source.z % dieColors.size()];
 
@@ -427,17 +407,51 @@ void colorTree(Node *node, const vector<string> &dieColors,
       node->color = sourceColor;
     }
   }
-
   // Assign colors to the sinks within this node
   for (auto &sink : node->sinks) {
     // Assuming all sinks in a node have the same color, so assign the node's
     // color
     sink.color = node->color;
   }
-
-  // Recurse for child nodes with incremented depth
   colorTree(node->leftChild, dieColors, source, depth + 1);
   colorTree(node->rightChild, dieColors, source, depth + 1);
+}
+// Helper function to find a node by its ID
+Node *findNodeById(Node *node, int id) {
+  if (node == nullptr)
+    return nullptr; // Base case: node is null
+  if (node->id == id)
+    return node; // Found the node
+
+  // Recursively search in the left subtree
+  Node *leftResult = findNodeById(node->leftChild, id);
+  if (leftResult != nullptr)
+    return leftResult; // Found in the left subtree
+
+  // Recursively search in the right subtree
+  return findNodeById(node->rightChild,
+                      id); // Could return nullptr if not found
+}
+
+// Function to calculate the Manhattan distance between two nodes by their IDs
+int calculateManhattanDistance(Node *root, int id1, int id2) {
+  Node *node1 = findNodeById(root, id1);
+  Node *node2 = findNodeById(root, id2);
+
+  if (node1 == nullptr || node2 == nullptr) {
+    cout << "One of the nodes could not be found." << endl;
+    return -1; // Indicating error
+  }
+
+  // Assuming each node contains the position of its first sink (x, y, z) for
+  // the calculation
+  int x1 = node1->sinks.front().x;
+  int y1 = node1->sinks.front().y;
+  //int z1 = node1->sinks.front().z;
+  int x2 = node2->sinks.front().x;
+  int y2 = node2->sinks.front().y;
+  //int z2 = node2->sinks.front().z;
+  return abs(x2 - x1) + abs(y2 - y1); // Manhattan distance  + abs(z2 - z1)
 }
 
 // Function to parse input from a file
@@ -503,8 +517,6 @@ void displayParsedData() {
   cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
 }
 
-// Updated depthFirstCapacitance function to ensure it calculates and stores
-// capacitance correctly
 double depthFirstCapacitance(Node *node) {
   if (!node)
     return 0.0; // Base case
@@ -562,7 +574,6 @@ void depthFirstDelay(Node *node, double accumulatedResistance) {
         node->capacitance; // Assuming updated by depthFirstCapacitance
     node->elmoreDelay = totalResistance * subtreeCapacitance + delay;
   }
-
   // Recursively calculate delay for child nodes, passing the total accumulated
   // resistance to each child
   if (node->leftChild)
@@ -573,16 +584,9 @@ void depthFirstDelay(Node *node, double accumulatedResistance) {
 
 // Function to calculate hierarchical delay for the entire tree
 void hierarchicalDelay(Node *node) {
-  // First, calculate the total capacitance starting from the root
   depthFirstCapacitance(node);
-
-  // Then, calculate the delay based on the updated capacitance values, starting
-  // from the root with the clock source's resistance
   depthFirstDelay(node, clockSource.outputResistance);
 }
-
-#include <cmath> // Include cmath for sqrt function
-
 // Function to calculate the Zero Skew Merging point and adjust wire length for
 // zero skew
 double ZeroSkewMerge(double delaySegment1, double delaySegment2,
@@ -598,22 +602,22 @@ double ZeroSkewMerge(double delaySegment1, double delaySegment2,
       (capacitancePerUnitLength + capacitanceSegment1 + capacitanceSegment2);
   double mergingPointX = numerator / denominator;
 
-  // Check if mergingPointX is outside the [0,1] range and calculate l' if
-  // needed
   if (mergingPointX >= 0 && mergingPointX <= 1) {
-    return mergingPointX;
+    return mergingPointX * lengthOfWire;
   } else {
     // Calculate l' based on the condition for x
     double lPrime = 0;
     if (mergingPointX > 1) {
       // For x > 1
+      cout << ">1, extending" << endl;
       lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment1, 2) +
                      2 * resistancePerUnitLength * capacitancePerUnitLength *
                          (delaySegment2 - delaySegment1)) -
                 resistancePerUnitLength * capacitanceSegment1) /
                (resistancePerUnitLength * capacitancePerUnitLength);
     } else {
-      // For x < 1
+      // For x < 0
+      cout << "<0, extending" << endl;
       lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment2, 2) +
                      2 * resistancePerUnitLength * capacitancePerUnitLength *
                          (delaySegment1 - delaySegment2)) -
@@ -629,51 +633,48 @@ double ZeroSkewMerge(double delaySegment1, double delaySegment2,
   }
 }
 
-// Function to find a node by its id in the tree and calculate its hierarchical
-// delay
-void calculateHierarchicalDelayForNode(Node *root, int selectedNodeId) {
-  // Base case: if the tree is empty or we reach a leaf node without finding the
-  // selected node
-  if (root == nullptr) {
-    return;
+double getNodeCapacitance(Node *node, int id) {
+  if (node == nullptr) {
+    return -1.0;
   }
-
-  // Check if the current node is the one we're looking for
-  if (root->id == selectedNodeId) {
-    // Calculate the hierarchical delay for this node
-    // First, calculate the total capacitance for this node and its subtree
-    hierarchicalDelay(root);
-    cout << "Hierarchical delay calculated for node " << selectedNodeId << "."
-         << endl;
-    // Optionally, print out the delay or perform further actions as needed
-    cout << "Total Capacitance: " << root->capacitance << " fF" << endl;
-    cout << "Elmore Delay: " << root->elmoreDelay << " ps" << endl;
-    return;
+  if (node->id == id) {
+    return node->capacitance;
   }
-
-  // Recursively search in the left and right subtrees
-  calculateHierarchicalDelayForNode(root->leftChild, selectedNodeId);
-  calculateHierarchicalDelayForNode(root->rightChild, selectedNodeId);
+  double leftSearch = getNodeCapacitance(node->leftChild, id);
+  if (leftSearch >= 0) {
+    return leftSearch;
+  }
+  return getNodeCapacitance(node->rightChild, id);
 }
 
+double getNodeDelay(Node *node, int id) {
+  if (node == nullptr) {
+    return -1.0;
+  }
+  if (node->id == id) {
+    return node->elmoreDelay;
+  }
+  double leftSearch = getNodeDelay(node->leftChild, id);
+  if (leftSearch >= 0) {
+    return leftSearch;
+  }
+  return getNodeDelay(node->rightChild, id);
+}
 /*
-zeroSkewTree{
-s= number of clock tree stages
-if (s==0){
+void zeroSkewTree {
+ s=numSinks;
+ if (s==0){
  return zst;
-}
+ }
+ for each subtree in stage s{
+  Treat each clock pin in subtree as a merging point
+  for each clock in subtree, repeat S3.2 and S3.3 until there is only one merging point left
 
-For each subtree in stage s {
-    Treat each clock in in subtree as a merging point
-    for each clock in subtree, repeat S3.2 and S3.3 until there is only one
-merging point left
-
-   Pair merging points (3.2)
-   For each pair perform Zero Skew merge and determine the new merge point (3.3)
-    if there is only one merging point left, return it
-
-}
-   s=s-1;
+  pair merging points (3.2)
+  For each pair, determine merging point with zero skew merge (3.3)
+  if there is only one merging point left, return it
+ }
+ s=s-1;
 }
 */
 int main() {
@@ -697,10 +698,13 @@ int main() {
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
-
-  int selectedNodeId = 1; // Example node ID
-  calculateHierarchicalDelayForNode(root, selectedNodeId);
-
+  //cout<<"man "<<calculateManhattanDistance(root,3,4)<<endl;
+  cout << "ZSM "
+       << ZeroSkewMerge(getNodeDelay(root, 3),
+                        getNodeDelay(root, 4),
+                        wireUnits.resistance, calculateManhattanDistance(root,3,4), getNodeCapacitance(root, 3),
+                        getNodeCapacitance(root,4), wireUnits.capacitance)
+       << endl;
   // Clean up memory
   deleteTree(root);
   return 0;
