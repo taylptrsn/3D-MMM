@@ -7,6 +7,10 @@
 #include <vector>
 /* TODO
 - Unit Conversion
+- Split into header files
+- Complete Zeroskewtree function
+- Make main call zeroskewtree for each die level
+- Delay buffering instead of wire elongation
 */
 using namespace std;
 
@@ -34,16 +38,12 @@ struct TSVUnits {
 };
 
 struct ClockSource {
-  int x;                   // Unit: None, coordinates in an unspecified grid
-  int y;                   // Unit: None, coordinates in an unspecified grid
-  int z;                   // Unit: None, coordinates in an unspecified grid
+  int x, y, z;             // Unit: None, coordinates in an unspecified grid
   double outputResistance; // Unit: ohms (ohm)
 };
 
 struct Sink {
-  int x;                   // Unit: None, coordinates in an unspecified grid
-  int y;                   // Unit: None, coordinates in an unspecified grid
-  int z;                   // Unit: None, coordinates in an unspecified grid
+  int x, y, z;             // Unit: None, coordinates in an unspecified grid
   double inputCapacitance; // Unit: femtofarads (fF)
   string color;            // Unit: None, simply a descriptive string
   // Constructor with default sink color set to gray/uncolored
@@ -64,15 +64,14 @@ struct Node {
                       // this node
   double elmoreDelay; // picoseconds (ps), existing attribute
   bool isBuffered; // Indicates if the node is a buffered node, default is false
-
-  // Updated constructor to include id with a default value of 0 (will be
-  // assigned properly during node creation)
+  int x, y, z;     // Unit: None, coordinates in an unspecified grid
   Node(const vector<Sink> &sinks, string color = "Gray",
        double capacitance = 0.0, double resistance = 0.0,
-       bool isBuffered = false, int id = 0) // Added id parameter
+       bool isBuffered = false, int id = 0, int x = 0, int y = 0,
+       int z = 0) // Added id parameter
       : id(id), sinks(sinks), leftChild(nullptr), rightChild(nullptr),
         color(color), capacitance(capacitance), resistance(resistance),
-        isBuffered(isBuffered) {}
+        isBuffered(isBuffered), x(x), y(y), z(z) {}
 };
 // Global Variables
 Layout layout;
@@ -559,7 +558,7 @@ void depthFirstDelay(Node *node, double accumulatedResistance) {
   // If the node is buffered, add the buffer delay to the node's delay
   // calculation
   if (node->isBuffered) {
-    // MAY BE WRONG intrinsicdelay=17000 fS
+    // if buffered, intrinsicdelay=17000 fS
     delay = bufferUnits.intrinsicDelay; //+(bufferUnits.outputResistance *
                                         // node->capacitance);
   }
@@ -603,12 +602,13 @@ double ZeroSkewMerge(double delaySegment1, double delaySegment2,
   double mergingPointX = numerator / denominator;
 
   if (mergingPointX >= 0 && mergingPointX <= 1) {
-    return mergingPointX * lengthOfWire;
+    return mergingPointX *
+           lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
   } else {
     // Calculate l' based on the condition for x
     double lPrime = 0;
     if (mergingPointX > 1) {
-      // For x > 1
+      // For x > 1, tapping point exactly on subtree 2
       cout << ">1, extending" << endl;
       lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment1, 2) +
                      2 * resistancePerUnitLength * capacitancePerUnitLength *
@@ -616,7 +616,7 @@ double ZeroSkewMerge(double delaySegment1, double delaySegment2,
                 resistancePerUnitLength * capacitanceSegment1) /
                (resistancePerUnitLength * capacitancePerUnitLength);
     } else {
-      // For x < 0
+      // For x < 0, tapping point on root of subtree 1
       cout << "<0, extending" << endl;
       lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment2, 2) +
                      2 * resistancePerUnitLength * capacitancePerUnitLength *
@@ -627,9 +627,10 @@ double ZeroSkewMerge(double delaySegment1, double delaySegment2,
 
     // Adjust lengthOfWire based on lPrime calculation
     // "manhattan merge point" = (x*deltax),(y*deltay) rounded to integer?
-    lengthOfWire += lPrime; // lPrime+manhattan merge point
+    // lengthOfWire += lPrime; // lPrime+manhattan merge point
 
-    return lengthOfWire;
+    // return lengthOfWire;
+    return lPrime;
   }
 }
 
@@ -661,21 +662,11 @@ double getNodeDelay(Node *node, int id) {
   return getNodeDelay(node->rightChild, id);
 }
 /*
-void zeroSkewTree {
- s=numSinks;
- if (s==0){
- return zst;
- }
- for each subtree in stage s{
-  Treat each clock pin in subtree as a merging point
-  for each clock in subtree, repeat S3.2 and S3.3 until there is only one
-merging point left
-
-  pair merging points (3.2)
-  For each pair, determine merging point with zero skew merge (3.3)
-  if there is only one merging point left, return it
- }
- s=s-1;
+Node* zeroSkewTree(Node* root) {
+ Top down, from clock source/root
+  if subtree has 2 locations, zeroskew merge
+  if any node doesnt have a physical location, visit children to see if they
+have 2 locations and perform zeroskewmerge if they do
 }
 */
 int main() {
@@ -707,6 +698,25 @@ int main() {
                         getNodeCapacitance(root, 3),
                         getNodeCapacitance(root, 4), wireUnits.capacitance)
        << endl;
+
+  cout << "ZSM "
+       << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
+                        wireUnits.resistance,
+                        calculateManhattanDistance(root, 3, 4),
+                        getNodeCapacitance(root, 3),
+                        getNodeCapacitance(root, 4), wireUnits.capacitance)
+       << endl;
+  /*
+    for (int i = 0; i < numSinks; i++) {
+      cout << "ZSM "
+           << ZeroSkewMerge(getNodeDelay(root, i), getNodeDelay(root, i + 1),
+                            wireUnits.resistance,
+                            calculateManhattanDistance(root, i, i + 1),
+                            getNodeCapacitance(root, i),
+                            getNodeCapacitance(root, i + 1),
+                            wireUnits.capacitance)
+           << endl;
+    } */
   // Clean up memory
   deleteTree(root);
   return 0;
