@@ -11,7 +11,6 @@
 - Complete Zeroskewtree function
 - Make main call zeroskewtree for each die level
 - Delay buffering instead of wire elongation
-- Set leaf node locations equal to sink coordinates
 */
 using namespace std;
 
@@ -338,18 +337,15 @@ void printTree(Node *node, int level = 0) {
     return; // Base case: if the node is null, return.
   }
   string indent = string(level * 8, ' '); // Adjust indentation for each level.
+  // Print the left branch (child) first.
   if (node->leftChild) {
     printTree(node->leftChild, level + 1);
   }
-  cout << endl;
-  // Print the current node information
-  cout << indent << "Node ID: " << node->id;
-  if (node->leftChild || node->rightChild) { // Check if it's an internal node
-    // Print location only for internal nodes
-    cout << " at position: (" << node->x << ", " << node->y << ", " << node->z
-         << ")";
-  }
-  cout << " - Depth " << level << " - Color: " << node->color
+  // Print the current node along with its color, memory address, capacitance,
+  // and Elmore delay.
+  cout << indent << "Node ID: " << node->id << " at position: (" << node->x
+       << ", " << node->y << ", " << node->z << ") -  Depth " << level
+       << " - Color: " << node->color
        << " - Total Capacitance: " << node->capacitance << " fF"
        << " - Elmore Delay: " << node->elmoreDelay << " fs" << endl;
 
@@ -360,13 +356,10 @@ void printTree(Node *node, int level = 0) {
            << sink.z << "), Input Capacitance: " << sink.inputCapacitance
            << " fF, Color: " << sink.color << endl;
     }
-  } else {
-    // Recursively print the child nodes if it's not a leaf
-
-    if (node->rightChild) {
-      printTree(node->rightChild, level + 1);
-    }
-    cout << endl;
+  }
+  cout << endl;
+  if (node->rightChild) {
+    printTree(node->rightChild, level + 1);
   }
 }
 void printLeaves(const Node *node) {
@@ -454,6 +447,26 @@ int calculateManhattanDistance(Node *root, int id1, int id2) {
   int y2 = node2->sinks.front().y;
   // int z2 = node2->sinks.front().z;
   return abs(x2 - x1) + abs(y2 - y1); // Manhattan distance  + abs(z2 - z1)
+}
+// Function to assign physical locations from the sink objects to their leaf
+// nodes
+void assignPhysicalLocations(Node *node) {
+  if (!node) {
+    return;
+  }
+
+  if (node->leftChild == nullptr && node->rightChild == nullptr) {
+    if (!node->sinks.empty()) {
+      // Assign the location of the first sink to the leaf node
+      node->x = node->sinks.front().x;
+      node->y = node->sinks.front().y;
+      node->z = node->sinks.front().z;
+    }
+  }
+
+  // Recursively assign physical locations to child nodes
+  assignPhysicalLocations(node->leftChild);
+  assignPhysicalLocations(node->rightChild);
 }
 
 // Function to parse input from a file
@@ -668,7 +681,6 @@ Node *zeroSkewTree(Node *root) {
           zeroskewmerge if they do
 } */
 
-
 // Helper function to check if a node has a physical location
 bool hasPhysicalLocation(const Node *node) {
   return node != nullptr && !(node->x == -1 && node->y == -1 && node->z == -1);
@@ -690,7 +702,7 @@ Node *zeroSkewTree(Node *root) {
       hasPhysicalLocation(root->rightChild)) {
 
     // Perform ZeroSkewMerge to determine the optimal merging strategy
-    //double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
+    // double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
 
     // Update root's location based on the mergePoint
     root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified
@@ -698,7 +710,6 @@ Node *zeroSkewTree(Node *root) {
   }
   return root;
 }
-
 
 int main() {
   int bound = 10;
@@ -709,6 +720,7 @@ int main() {
 
   // Generate the 3D tree
   Node *root = AbsTreeGen3D(sinks, bound);
+  assignPhysicalLocations(root);
   colorTree(root, dieColors, clockSource);
   cout << "Number of Z-cuts performed: " << zCutCount << endl;
   // Print the sinks of generated tree
