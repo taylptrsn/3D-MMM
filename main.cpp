@@ -659,62 +659,47 @@ double getNodeDelay(Node *node, int id) {
   }
   return getNodeDelay(node->rightChild, id);
 }
+
 /*
-Node* zeroSkewTree(Node* root) {
- Top down, from clock source/root
-  if subtree has 2 locations in x,y,z , zeroskew merge
-  if any node doesnt have a physical location, visit children to see if they
-   have 2 locations and perform zeroskewmerge if they do
+Node *zeroSkewTree(Node *root) {
+  Top down, from clock source / root if subtree has 2 locations in x, y, z,
+      zeroskew merge if any node doesnt have a physical location,
+      visit children to see if they have 2 locations and perform
+          zeroskewmerge if they do
 }
 
+
 // Helper function to check if a node has a physical location
-bool hasPhysicalLocation(const Node* node) {
-    return node != nullptr && !(node->x == -1 && node->y == -1 && node->z ==
--1);
+bool hasPhysicalLocation(const Node *node) {
+  return node != nullptr && !(node->x == -1 && node->y == -1 && node->z == -1);
 }
 
 // Main recursive function to perform zero skew merging
-Node* zeroSkewTree(Node* root) {
-    if (!root || (root->leftChild == nullptr && root->rightChild == nullptr)) {
-        // Leaf node or empty subtree, no merging required
-        return root;
-    }
-
-    // First, process the subtrees
-    root->leftChild = zeroSkewTree(root->leftChild);
-    root->rightChild = zeroSkewTree(root->rightChild);
-
-    // Check if both children have physical locations
-    if (hasPhysicalLocation(root->leftChild) &&
-hasPhysicalLocation(root->rightChild)) {
-        // Calculate properties for the ZeroSkewMerge. Placeholder values are
-used here. double delay1 = root->leftChild->elmoreDelay; // Assume these
-properties are available double delay2 = root->rightChild->elmoreDelay; double
-distance = 1.0; // Simplification, you'd calculate the actual distance double
-cap1 = root->leftChild->capacitance; double cap2 =
-root->rightChild->capacitance;
-
-        // Perform ZeroSkewMerge to determine the optimal merging strategy
-        double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
-
-        // Update root's location based on the mergePoint. This is a simplified
-example.
-        // You would adjust root's location based on the actual logic of how
-mergePoint influences position. root->x = (root->leftChild->x +
-root->rightChild->x) / 2; // Simplified root->y = (root->leftChild->y +
-root->rightChild->y) / 2; // Simplified root->z = (root->leftChild->z +
-root->rightChild->z) / 2; // Simplified
-
-        // Update other properties as needed based on merging result
-    }
-
-    // If only one child has a physical location, you might choose to propagate
-that child's location up,
-    // or decide based on your specific requirements.
-
+Node *zeroSkewTree(Node *root) {
+  if (!root || (root->leftChild == nullptr && root->rightChild == nullptr)) {
+    // Leaf node or empty subtree, no merging required
     return root;
+  }
+
+  // First, process the subtrees
+  root->leftChild = zeroSkewTree(root->leftChild);
+  root->rightChild = zeroSkewTree(root->rightChild);
+
+  // Check if both children have physical locations
+  if (hasPhysicalLocation(root->leftChild) &&
+      hasPhysicalLocation(root->rightChild)) {
+
+    // Perform ZeroSkewMerge to determine the optimal merging strategy
+    double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
+
+    // Update root's location based on the mergePoint
+    root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified
+    root->y = (root->leftChild->y + root->rightChild->y) / 2; // Simplified
+  }
+  return root;
 }
 */
+
 int main() {
   int bound = 10;
   // Call parseInput to read and parse the input file
