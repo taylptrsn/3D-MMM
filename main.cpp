@@ -11,6 +11,7 @@
 - Complete Zeroskewtree function
 - Make main call zeroskewtree for each die level
 - Delay buffering instead of wire elongation
+- Set leaf node locations equal to sink coordinates
 */
 using namespace std;
 
@@ -67,8 +68,7 @@ struct Node {
   int x, y, z;     // Unit: None, coordinates in an unspecified grid
   Node(const vector<Sink> &sinks, string color = "Gray",
        double capacitance = 0.0, double resistance = 0.0,
-       bool isBuffered = false, int id = 0, int x = 0, int y = 0,
-       int z = 0) // Added id parameter
+       bool isBuffered = false, int id = 0, int x = -1, int y = -1, int z = -1)
       : id(id), sinks(sinks), leftChild(nullptr), rightChild(nullptr),
         color(color), capacitance(capacitance), resistance(resistance),
         isBuffered(isBuffered), x(x), y(y), z(z) {}
@@ -338,14 +338,18 @@ void printTree(Node *node, int level = 0) {
     return; // Base case: if the node is null, return.
   }
   string indent = string(level * 8, ' '); // Adjust indentation for each level.
-  // Print the left branch (child) first.
   if (node->leftChild) {
     printTree(node->leftChild, level + 1);
   }
-  // Print the current node along with its color, memory address, capacitance,
-  // and Elmore delay.
-  cout << indent << "Node at position " << node->id << " -  Depth " << level
-       << " - Color: " << node->color
+  cout << endl;
+  // Print the current node information
+  cout << indent << "Node ID: " << node->id;
+  if (node->leftChild || node->rightChild) { // Check if it's an internal node
+    // Print location only for internal nodes
+    cout << " at position: (" << node->x << ", " << node->y << ", " << node->z
+         << ")";
+  }
+  cout << " - Depth " << level << " - Color: " << node->color
        << " - Total Capacitance: " << node->capacitance << " fF"
        << " - Elmore Delay: " << node->elmoreDelay << " fs" << endl;
 
@@ -356,13 +360,15 @@ void printTree(Node *node, int level = 0) {
            << sink.z << "), Input Capacitance: " << sink.inputCapacitance
            << " fF, Color: " << sink.color << endl;
     }
-  }
-  cout << endl;
-  if (node->rightChild) {
-    printTree(node->rightChild, level + 1);
+  } else {
+    // Recursively print the child nodes if it's not a leaf
+
+    if (node->rightChild) {
+      printTree(node->rightChild, level + 1);
+    }
+    cout << endl;
   }
 }
-
 void printLeaves(const Node *node) {
   if (node == nullptr) {
     return;
@@ -420,7 +426,7 @@ Node *findNodeById(Node *node, int id) {
   if (node == nullptr)
     return nullptr; // Base case: node is null
   if (node->id == id)
-    return node; // Found the node
+    return node;
 
   // Recursively search in the left subtree
   Node *leftResult = findNodeById(node->leftChild, id);
@@ -436,14 +442,11 @@ Node *findNodeById(Node *node, int id) {
 int calculateManhattanDistance(Node *root, int id1, int id2) {
   Node *node1 = findNodeById(root, id1);
   Node *node2 = findNodeById(root, id2);
-
   if (node1 == nullptr || node2 == nullptr) {
     cout << "One of the nodes could not be found." << endl;
-    return -1; // Indicating error
+    return -1;
   }
 
-  // Assuming each node contains the position of its first sink (x, y, z) for
-  // the calculation
   int x1 = node1->sinks.front().x;
   int y1 = node1->sinks.front().y;
   // int z1 = node1->sinks.front().z;
@@ -589,9 +592,12 @@ void hierarchicalDelay(Node *node) {
 // Function to calculate the Zero Skew Merging point and adjust wire length for
 // zero skew
 double ZeroSkewMerge(double delaySegment1, double delaySegment2,
-                     double resistancePerUnitLength, double lengthOfWire,
-                     double capacitanceSegment1, double capacitanceSegment2,
-                     double capacitancePerUnitLength) {
+                     double lengthOfWire, double capacitanceSegment1,
+                     double capacitanceSegment2) {
+  // Use global variables for resistance and capacitance per unit length
+  double resistancePerUnitLength = wireUnits.resistance;
+  double capacitancePerUnitLength = wireUnits.capacitance;
+
   // Calculate the initial merging point x
   double numerator = (delaySegment2 - delaySegment1) +
                      resistancePerUnitLength * lengthOfWire *
@@ -605,7 +611,6 @@ double ZeroSkewMerge(double delaySegment1, double delaySegment2,
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
   } else {
-    // Calculate l' based on the condition for x
     double lPrime = 0;
     if (mergingPointX > 1) {
       // For x > 1, tapping point exactly on subtree 2
@@ -624,16 +629,9 @@ double ZeroSkewMerge(double delaySegment1, double delaySegment2,
                 resistancePerUnitLength * capacitanceSegment2) /
                (resistancePerUnitLength * capacitancePerUnitLength);
     }
-
-    // Adjust lengthOfWire based on lPrime calculation
-    // "manhattan merge point" = (x*deltax),(y*deltay) rounded to integer?
-    // lengthOfWire += lPrime; // lPrime+manhattan merge point
-
-    // return lengthOfWire;
     return lPrime;
   }
 }
-
 double getNodeCapacitance(Node *node, int id) {
   if (node == nullptr) {
     return -1.0;
@@ -664,9 +662,57 @@ double getNodeDelay(Node *node, int id) {
 /*
 Node* zeroSkewTree(Node* root) {
  Top down, from clock source/root
-  if subtree has 2 locations, zeroskew merge
+  if subtree has 2 locations in x,y,z , zeroskew merge
   if any node doesnt have a physical location, visit children to see if they
-have 2 locations and perform zeroskewmerge if they do
+   have 2 locations and perform zeroskewmerge if they do
+}
+
+// Helper function to check if a node has a physical location
+bool hasPhysicalLocation(const Node* node) {
+    return node != nullptr && !(node->x == -1 && node->y == -1 && node->z ==
+-1);
+}
+
+// Main recursive function to perform zero skew merging
+Node* zeroSkewTree(Node* root) {
+    if (!root || (root->leftChild == nullptr && root->rightChild == nullptr)) {
+        // Leaf node or empty subtree, no merging required
+        return root;
+    }
+
+    // First, process the subtrees
+    root->leftChild = zeroSkewTree(root->leftChild);
+    root->rightChild = zeroSkewTree(root->rightChild);
+
+    // Check if both children have physical locations
+    if (hasPhysicalLocation(root->leftChild) &&
+hasPhysicalLocation(root->rightChild)) {
+        // Calculate properties for the ZeroSkewMerge. Placeholder values are
+used here. double delay1 = root->leftChild->elmoreDelay; // Assume these
+properties are available double delay2 = root->rightChild->elmoreDelay; double
+distance = 1.0; // Simplification, you'd calculate the actual distance double
+cap1 = root->leftChild->capacitance; double cap2 =
+root->rightChild->capacitance;
+
+        // Perform ZeroSkewMerge to determine the optimal merging strategy
+        double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
+
+        // Update root's location based on the mergePoint. This is a simplified
+example.
+        // You would adjust root's location based on the actual logic of how
+mergePoint influences position. root->x = (root->leftChild->x +
+root->rightChild->x) / 2; // Simplified root->y = (root->leftChild->y +
+root->rightChild->y) / 2; // Simplified root->z = (root->leftChild->z +
+root->rightChild->z) / 2; // Simplified
+
+        // Update other properties as needed based on merging result
+    }
+
+    // If only one child has a physical location, you might choose to propagate
+that child's location up,
+    // or decide based on your specific requirements.
+
+    return root;
 }
 */
 int main() {
@@ -690,21 +736,18 @@ int main() {
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
-  // cout<<"man "<<calculateManhattanDistance(root,3,4)<<endl;
   cout << "ZSM "
        << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
-                        wireUnits.resistance,
                         calculateManhattanDistance(root, 3, 4),
                         getNodeCapacitance(root, 3),
-                        getNodeCapacitance(root, 4), wireUnits.capacitance)
+                        getNodeCapacitance(root, 4))
        << endl;
 
   cout << "ZSM "
        << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
-                        wireUnits.resistance,
                         calculateManhattanDistance(root, 3, 4),
                         getNodeCapacitance(root, 3),
-                        getNodeCapacitance(root, 4), wireUnits.capacitance)
+                        getNodeCapacitance(root, 4))
        << endl;
   /*
     for (int i = 0; i < numSinks; i++) {
