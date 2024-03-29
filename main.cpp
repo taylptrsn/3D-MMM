@@ -660,13 +660,13 @@ double getNodeDelay(Node *node, int id) {
   return getNodeDelay(node->rightChild, id);
 }
 
-/*
+/* Pseudocode
 Node *zeroSkewTree(Node *root) {
   Top down, from clock source / root if subtree has 2 locations in x, y, z,
       zeroskew merge if any node doesnt have a physical location,
       visit children to see if they have 2 locations and perform
           zeroskewmerge if they do
-}
+} */
 
 
 // Helper function to check if a node has a physical location
@@ -674,7 +674,7 @@ bool hasPhysicalLocation(const Node *node) {
   return node != nullptr && !(node->x == -1 && node->y == -1 && node->z == -1);
 }
 
-// Main recursive function to perform zero skew merging
+// Main recursive function to perform zero skew merging WIP
 Node *zeroSkewTree(Node *root) {
   if (!root || (root->leftChild == nullptr && root->rightChild == nullptr)) {
     // Leaf node or empty subtree, no merging required
@@ -690,7 +690,7 @@ Node *zeroSkewTree(Node *root) {
       hasPhysicalLocation(root->rightChild)) {
 
     // Perform ZeroSkewMerge to determine the optimal merging strategy
-    double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
+    //double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
 
     // Update root's location based on the mergePoint
     root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified
@@ -698,7 +698,7 @@ Node *zeroSkewTree(Node *root) {
   }
   return root;
 }
-*/
+
 
 int main() {
   int bound = 10;
