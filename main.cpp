@@ -11,6 +11,7 @@
 - Complete Zeroskewtree function
 - Make main call zeroskewtree for each die level
 - Delay buffering instead of wire elongation
+- rework ZeroSkewMerge
 */
 using namespace std;
 
@@ -40,6 +41,10 @@ struct TSVUnits {
 struct ClockSource {
   int x, y, z;             // Unit: None, coordinates in an unspecified grid
   double outputResistance; // Unit: ohms (ohm)
+};
+
+struct Point {
+    double x, y;
 };
 
 struct Sink {
@@ -686,6 +691,14 @@ bool hasPhysicalLocation(const Node *node) {
   return node != nullptr && !(node->x == -1 && node->y == -1 && node->z == -1);
 }
 
+std::vector<Point> findPoints(double x1, double y1, double mDist) {
+    return {
+        {x1 + mDist, y1},        // Right
+        {x1 - mDist, y1},        // Left
+        {x1, y1 + mDist},        // Up
+        {x1, y1 - mDist}         // Down
+    };
+}
 // Main recursive function to perform zero skew merging WIP
 Node *zeroSkewTree(Node *root) {
   if (!root || (root->leftChild == nullptr && root->rightChild == nullptr)) {
@@ -705,8 +718,8 @@ Node *zeroSkewTree(Node *root) {
     // double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
 
     // Update root's location based on the mergePoint
-    root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified
-    root->y = (root->leftChild->y + root->rightChild->y) / 2; // Simplified
+    //root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified
+    //root->y = (root->leftChild->y + root->rightChild->y) / 2; // Simplified
   }
   return root;
 }
@@ -746,17 +759,15 @@ int main() {
                         getNodeCapacitance(root, 3),
                         getNodeCapacitance(root, 4))
        << endl;
-  /*
-    for (int i = 0; i < numSinks; i++) {
-      cout << "ZSM "
-           << ZeroSkewMerge(getNodeDelay(root, i), getNodeDelay(root, i + 1),
-                            wireUnits.resistance,
-                            calculateManhattanDistance(root, i, i + 1),
-                            getNodeCapacitance(root, i),
-                            getNodeCapacitance(root, i + 1),
-                            wireUnits.capacitance)
-           << endl;
-    } */
+
+  double x1 = 95.0, y1 = 95.0, mDist = 30.686;
+  std::vector<Point> points = findPoints(x1, y1, mDist);
+
+  std::cout << "The unique points satisfying the equation are:\n";
+  for (const Point& point : points) {
+      std::cout << "(" << point.x << ", " << point.y << ")\n";
+  }
+  
   // Clean up memory
   deleteTree(root);
   return 0;
