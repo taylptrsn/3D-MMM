@@ -6,7 +6,7 @@
 #include <limits>
 #include <vector>
 /* TODO
-- Unit Conversion
+- Unit Conversion at Data read-in
 - Split into header files
 - Complete Zeroskewtree function
 - Make main call zeroskewtree for each die level
@@ -44,7 +44,7 @@ struct ClockSource {
 };
 
 struct Point {
-    double x, y;
+  double x, y;
 };
 
 struct Sink {
@@ -129,7 +129,7 @@ int calculateMedianY(const vector<Sink> &sinks) {
 // Function to return the minimum x value in the set of sinks
 int getMinX(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    throw std::runtime_error("No sinks available to determine minimum X.");
+    throw runtime_error("No sinks available to determine minimum X.");
   }
   int minX = sinks[0].x;
   for (const auto &sink : sinks) {
@@ -143,7 +143,7 @@ int getMinX(const vector<Sink> &sinks) {
 // Function to return the maximum x value in the set of sinks
 int getMaxX(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    throw std::runtime_error("No sinks available to determine maximum X.");
+    throw runtime_error("No sinks available to determine maximum X.");
   }
   int maxX = sinks[0].x;
   for (const auto &sink : sinks) {
@@ -157,7 +157,7 @@ int getMaxX(const vector<Sink> &sinks) {
 // Function to return the minimum y value in the set of sinks
 int getMinY(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    throw std::runtime_error("No sinks available to determine minimum Y.");
+    throw runtime_error("No sinks available to determine minimum Y.");
   }
   int minY = sinks[0].y;
   for (const auto &sink : sinks) {
@@ -171,7 +171,7 @@ int getMinY(const vector<Sink> &sinks) {
 // Function to return the maximum y value in the set of sinks
 int getMaxY(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    throw std::runtime_error("No sinks available to determine maximum Y.");
+    throw runtime_error("No sinks available to determine maximum Y.");
   }
   int maxY = sinks[0].y;
   for (const auto &sink : sinks) {
@@ -185,7 +185,7 @@ int getMaxY(const vector<Sink> &sinks) {
 // Function to return the minimum z value in the set of sinks
 int getMinZ(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    throw std::runtime_error("No sinks available to determine minimum Z.");
+    throw runtime_error("No sinks available to determine minimum Z.");
   }
   int minZ = sinks[0].z;
   for (const auto &sink : sinks) {
@@ -199,7 +199,7 @@ int getMinZ(const vector<Sink> &sinks) {
 // Function to return the maximum z value in the set of sinks
 int getMaxZ(const vector<Sink> &sinks) {
   if (sinks.empty()) {
-    throw std::runtime_error("No sinks available to determine maximum Z.");
+    throw runtime_error("No sinks available to determine maximum Z.");
   }
   int maxZ = sinks[0].z;
   for (const auto &sink : sinks) {
@@ -568,6 +568,15 @@ double depthFirstCapacitance(Node *node) {
   return nodeCapacitance;
 }
 
+vector<Point> findPoints(double x1, double y1, double mDist) {
+  return {
+      {x1 + mDist, y1}, // Right
+      {x1 - mDist, y1}, // Left
+      {x1, y1 + mDist}, // Up
+      {x1, y1 - mDist}  // Down
+  };
+}
+
 void depthFirstDelay(Node *node, double accumulatedResistance) {
   if (!node)
     return; // Base case: node is null
@@ -609,13 +618,28 @@ void hierarchicalDelay(Node *node) {
 }
 // Function to calculate the Zero Skew Merging point and adjust wire length for
 // zero skew
-double ZeroSkewMerge(double delaySegment1, double delaySegment2,
+double ZeroSkewMerge(Node *root, double delaySegment1, double delaySegment2,
                      double lengthOfWire, double capacitanceSegment1,
                      double capacitanceSegment2) {
   // Use global variables for resistance and capacitance per unit length
   double resistancePerUnitLength = wireUnits.resistance;
   double capacitancePerUnitLength = wireUnits.capacitance;
 
+  Node *node1 = findNodeById(root, 3);
+  Node *node2 = findNodeById(root, 4);
+  if (node1 == nullptr || node2 == nullptr) {
+    cout << "One of the nodes could not be found." << endl;
+    return -1;
+  }
+  cout<<endl;
+  double x1 = node1->sinks.front().x;
+  double y1 = node1->sinks.front().y;
+  double x2 = node2->sinks.front().x;
+  double y2 = node2->sinks.front().y;
+  //cout<<"x1: "<<x1<<endl;
+  //cout<<"y1: "<<y1<<endl;
+  //cout<<"x2: "<<x2<<endl;
+  //cout<<"y2: "<<y2<<endl;
   // Calculate the initial merging point x
   double numerator = (delaySegment2 - delaySegment1) +
                      resistancePerUnitLength * lengthOfWire *
@@ -626,27 +650,61 @@ double ZeroSkewMerge(double delaySegment1, double delaySegment2,
   double mergingPointX = numerator / denominator;
 
   if (mergingPointX >= 0 && mergingPointX <= 1) {
+    cout << "Tapping point in range, calculating merging point" << endl;
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
   } else {
     double lPrime = 0;
     if (mergingPointX > 1) {
       // For x > 1, tapping point exactly on subtree 2
-      cout << ">1, extending" << endl;
+      cout << "Tapping point out of range( > 1), extending" << endl;
       lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment1, 2) +
                      2 * resistancePerUnitLength * capacitancePerUnitLength *
                          (delaySegment2 - delaySegment1)) -
                 resistancePerUnitLength * capacitanceSegment1) /
                (resistancePerUnitLength * capacitancePerUnitLength);
+
+      vector<Point> points = findPoints(x2, y2, lPrime);
+      cout << endl;
+      cout << "Unique points satisfying the equation are:\n";
+      for (const Point &point : points) {
+        //if (point.x == x2 && point.x >= 0 && point.y >=0) { 
+        cout << "(" << point.x << ", " << point.y << ")\n";
+        //}
+      }
+      cout << endl;
+      cout << "Valid solutions rooted at subtree 2 are:\n";
+      for (const Point &point : points) {
+        if (point.x == x2 && point.x >= 0 && point.y >=0) { 
+        cout << "(" << point.x << ", " << point.y << ")\n";
+        }
+      }
     } else {
       // For x < 0, tapping point on root of subtree 1
-      cout << "<0, extending" << endl;
+      cout << "Tapping point out of range( < 0), extending" << endl;
       lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment2, 2) +
                      2 * resistancePerUnitLength * capacitancePerUnitLength *
                          (delaySegment1 - delaySegment2)) -
                 resistancePerUnitLength * capacitanceSegment2) /
                (resistancePerUnitLength * capacitancePerUnitLength);
+
+      vector<Point> points = findPoints(x1, y1, lPrime);
+      cout << endl;
+      cout << "Unique points satisfying the equation are:\n";
+      for (const Point &point : points) {
+        //if (point.x == x1 && point.x >= 0 && point.y >=0){ 
+        cout << "(" << point.x << ", " << point.y << ")\n";
+        //}
+      }
+      cout << endl;
+      cout << "Valid solutions rooted at subtree 1 are:\n";
+      for (const Point &point : points) {
+        if (point.x == x1 && point.x >= 0 && point.y >=0){ 
+        cout << "(" << point.x << ", " << point.y << ")\n";
+        }
+      }
     }
+    
     return lPrime;
   }
 }
@@ -691,14 +749,6 @@ bool hasPhysicalLocation(const Node *node) {
   return node != nullptr && !(node->x == -1 && node->y == -1 && node->z == -1);
 }
 
-std::vector<Point> findPoints(double x1, double y1, double mDist) {
-    return {
-        {x1 + mDist, y1},        // Right
-        {x1 - mDist, y1},        // Left
-        {x1, y1 + mDist},        // Up
-        {x1, y1 - mDist}         // Down
-    };
-}
 // Main recursive function to perform zero skew merging WIP
 Node *zeroSkewTree(Node *root) {
   if (!root || (root->leftChild == nullptr && root->rightChild == nullptr)) {
@@ -718,8 +768,8 @@ Node *zeroSkewTree(Node *root) {
     // double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
 
     // Update root's location based on the mergePoint
-    //root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified
-    //root->y = (root->leftChild->y + root->rightChild->y) / 2; // Simplified
+    // root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified
+    // root->y = (root->leftChild->y + root->rightChild->y) / 2; // Simplified
   }
   return root;
 }
@@ -746,28 +796,20 @@ int main() {
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
-  cout << "ZSM "
-       << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
-                        calculateManhattanDistance(root, 3, 4),
-                        getNodeCapacitance(root, 3),
-                        getNodeCapacitance(root, 4))
-       << endl;
-
-  cout << "ZSM "
-       << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
-                        calculateManhattanDistance(root, 3, 4),
-                        getNodeCapacitance(root, 3),
-                        getNodeCapacitance(root, 4))
-       << endl;
-
-  double x1 = 95.0, y1 = 95.0, mDist = 30.686;
-  std::vector<Point> points = findPoints(x1, y1, mDist);
-
-  std::cout << "The unique points satisfying the equation are:\n";
-  for (const Point& point : points) {
-      std::cout << "(" << point.x << ", " << point.y << ")\n";
-  }
+  ZeroSkewMerge(root, getNodeDelay(root, 3), getNodeDelay(root, 4),
+                calculateManhattanDistance(root, 3, 4),
+                getNodeCapacitance(root, 3), getNodeCapacitance(root, 4)); 
   
+  ZeroSkewMerge(root, getNodeDelay(root, 4), getNodeDelay(root, 3),
+  calculateManhattanDistance(root, 4, 3),
+  getNodeCapacitance(root, 4), getNodeCapacitance(root, 3)); 
+  /*cout << "ZSM "
+   << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
+                    calculateManhattanDistance(root, 3, 4),
+                    getNodeCapacitance(root, 3),
+                    getNodeCapacitance(root, 4))
+   << endl; */
+
   // Clean up memory
   deleteTree(root);
   return 0;
