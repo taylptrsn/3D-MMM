@@ -796,6 +796,7 @@ int main() {
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
+  //move function calls inside ZSM function for easier call in main
   ZeroSkewMerge(root, getNodeDelay(root, 3), getNodeDelay(root, 4),
                 calculateManhattanDistance(root, 3, 4),
                 getNodeCapacitance(root, 3), getNodeCapacitance(root, 4)); 
