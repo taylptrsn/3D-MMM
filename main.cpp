@@ -625,8 +625,8 @@ double ZeroSkewMerge(Node *root, double delaySegment1, double delaySegment2,
   double resistancePerUnitLength = wireUnits.resistance;
   double capacitancePerUnitLength = wireUnits.capacitance;
 
-  Node *node1 = findNodeById(root, 3);
-  Node *node2 = findNodeById(root, 4);
+  Node *node1 = findNodeById(root, 1);
+  Node *node2 = findNodeById(root, 3);
   if (node1 == nullptr || node2 == nullptr) {
     cout << "One of the nodes could not be found." << endl;
     return -1;
@@ -651,8 +651,22 @@ double ZeroSkewMerge(Node *root, double delaySegment1, double delaySegment2,
 
   if (mergingPointX >= 0 && mergingPointX <= 1) {
     cout << "Tapping point in range, calculating merging point" << endl;
+    cout << "X: " << mergingPointX << endl;
+    cout<< "lenth of wire: "<<lengthOfWire<<endl;
+    cout << "merge point sink 1 :" <<ceil(mergingPointX*lengthOfWire) << endl;
+    cout << "merge point sink 2 :" << floor((1-mergingPointX)*lengthOfWire) << endl;
+    vector<Point> points1 = findPoints(x1, y1, ceil(mergingPointX*lengthOfWire));
+    vector<Point> points2 = findPoints(x2, y2, floor((1-mergingPointX)*lengthOfWire));
+    for (const Point &point : points1) {
+      cout << "(" << point.x << ", " << point.y << ")\n";
+    }
+    
+    for (const Point &point : points2) {
+      cout << "(" << point.x << ", " << point.y << ")\n";
+    }
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
+    
   } else {
     double lPrime = 0;
     if (mergingPointX > 1) {
@@ -668,9 +682,7 @@ double ZeroSkewMerge(Node *root, double delaySegment1, double delaySegment2,
       cout << endl;
       cout << "Unique points satisfying the equation are:\n";
       for (const Point &point : points) {
-        //if (point.x == x2 && point.x >= 0 && point.y >=0) { 
         cout << "(" << point.x << ", " << point.y << ")\n";
-        //}
       }
       cout << endl;
       cout << "Valid solutions rooted at subtree 2 are:\n";
@@ -692,9 +704,7 @@ double ZeroSkewMerge(Node *root, double delaySegment1, double delaySegment2,
       cout << endl;
       cout << "Unique points satisfying the equation are:\n";
       for (const Point &point : points) {
-        //if (point.x == x1 && point.x >= 0 && point.y >=0){ 
         cout << "(" << point.x << ", " << point.y << ")\n";
-        //}
       }
       cout << endl;
       cout << "Valid solutions rooted at subtree 1 are:\n";
@@ -768,7 +778,7 @@ Node *zeroSkewTree(Node *root) {
     // double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
 
     // Update root's location based on the mergePoint
-    // root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified
+    // root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified                  
     // root->y = (root->leftChild->y + root->rightChild->y) / 2; // Simplified
   }
   return root;
@@ -797,6 +807,7 @@ int main() {
   cout << "Abstract Tree:" << endl;
   printTree(root);
   //move function calls inside ZSM function for easier call in main
+  /*
   ZeroSkewMerge(root, getNodeDelay(root, 3), getNodeDelay(root, 4),
                 calculateManhattanDistance(root, 3, 4),
                 getNodeCapacitance(root, 3), getNodeCapacitance(root, 4)); 
@@ -804,6 +815,10 @@ int main() {
   ZeroSkewMerge(root, getNodeDelay(root, 4), getNodeDelay(root, 3),
   calculateManhattanDistance(root, 4, 3),
   getNodeCapacitance(root, 4), getNodeCapacitance(root, 3)); 
+  */
+  ZeroSkewMerge(root, getNodeDelay(root, 1), getNodeDelay(root, 3),
+  calculateManhattanDistance(root, 1, 3),
+  getNodeCapacitance(root, 1), getNodeCapacitance(root, 3)); 
   /*cout << "ZSM "
    << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
                     calculateManhattanDistance(root, 3, 4),
