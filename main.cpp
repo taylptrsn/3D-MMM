@@ -659,14 +659,14 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
   int lengthOfWire=calculateManhattanDistance(root,id1,id2);
   
   cout<<endl;
-  double x1 = node1->sinks.front().x;
-  double y1 = node1->sinks.front().y;
-  double x2 = node2->sinks.front().x;
-  double y2 = node2->sinks.front().y;
-  //cout<<"x1: "<<x1<<endl;
-  //cout<<"y1: "<<y1<<endl;
-  //cout<<"x2: "<<x2<<endl;
-  //cout<<"y2: "<<y2<<endl;
+  double x1 = node1->x;
+  double y1 = node1->y;
+  double x2 = node2->x;
+  double y2 = node2->y;
+  cout<<"x1: "<<x1<<endl;
+  cout<<"y1: "<<y1<<endl;
+  cout<<"x2: "<<x2<<endl;
+  cout<<"y2: "<<y2<<endl;
   // Calculate the initial merging point x
   double numerator = (delaySegment2 - delaySegment1) +
                      resistancePerUnitLength * lengthOfWire *
@@ -807,7 +807,7 @@ int main() {
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
-  ZeroSkewMerge(root,3,4);
+  ZeroSkewMerge(root,1,3);
   /*cout << "ZSM "
    << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
                     calculateManhattanDistance(root, 3, 4),
