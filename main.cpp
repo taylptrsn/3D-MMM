@@ -616,21 +616,48 @@ void hierarchicalDelay(Node *node) {
   depthFirstCapacitance(node);
   depthFirstDelay(node, clockSource.outputResistance);
 }
+double getNodeCapacitance(Node *node, int id) {
+  if (node == nullptr) {
+    return -1.0;
+  }
+  if (node->id == id) {
+    return node->capacitance;
+  }
+  double leftSearch = getNodeCapacitance(node->leftChild, id);
+  if (leftSearch >= 0) {
+    return leftSearch;
+  }
+  return getNodeCapacitance(node->rightChild, id);
+}
+
+double getNodeDelay(Node *node, int id) {
+  if (node == nullptr) {
+    return -1.0;
+  }
+  if (node->id == id) {
+    return node->elmoreDelay;
+  }
+  double leftSearch = getNodeDelay(node->leftChild, id);
+  if (leftSearch >= 0) {
+    return leftSearch;
+  }
+  return getNodeDelay(node->rightChild, id);
+}
 // Function to calculate the Zero Skew Merging point and adjust wire length for
 // zero skew
-double ZeroSkewMerge(Node *root, double delaySegment1, double delaySegment2,
-                     double lengthOfWire, double capacitanceSegment1,
-                     double capacitanceSegment2) {
+double ZeroSkewMerge(Node *root, int id1, int id2) {
   // Use global variables for resistance and capacitance per unit length
   double resistancePerUnitLength = wireUnits.resistance;
   double capacitancePerUnitLength = wireUnits.capacitance;
 
-  Node *node1 = findNodeById(root, 1);
-  Node *node2 = findNodeById(root, 3);
-  if (node1 == nullptr || node2 == nullptr) {
-    cout << "One of the nodes could not be found." << endl;
-    return -1;
-  }
+  Node *node1 = findNodeById(root, id1);
+  Node *node2 = findNodeById(root, id2);
+  double delaySegment1=getNodeDelay(root,id1);
+  double delaySegment2=getNodeDelay(root,id2);
+  double capacitanceSegment1=getNodeCapacitance(root,id1);
+  double capacitanceSegment2=getNodeCapacitance(root,id2);
+  int lengthOfWire=calculateManhattanDistance(root,id1,id2);
+  
   cout<<endl;
   double x1 = node1->sinks.front().x;
   double y1 = node1->sinks.front().y;
@@ -718,33 +745,7 @@ double ZeroSkewMerge(Node *root, double delaySegment1, double delaySegment2,
     return lPrime;
   }
 }
-double getNodeCapacitance(Node *node, int id) {
-  if (node == nullptr) {
-    return -1.0;
-  }
-  if (node->id == id) {
-    return node->capacitance;
-  }
-  double leftSearch = getNodeCapacitance(node->leftChild, id);
-  if (leftSearch >= 0) {
-    return leftSearch;
-  }
-  return getNodeCapacitance(node->rightChild, id);
-}
 
-double getNodeDelay(Node *node, int id) {
-  if (node == nullptr) {
-    return -1.0;
-  }
-  if (node->id == id) {
-    return node->elmoreDelay;
-  }
-  double leftSearch = getNodeDelay(node->leftChild, id);
-  if (leftSearch >= 0) {
-    return leftSearch;
-  }
-  return getNodeDelay(node->rightChild, id);
-}
 
 /* Pseudocode
 Node *zeroSkewTree(Node *root) {
@@ -806,19 +807,7 @@ int main() {
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
-  //move function calls inside ZSM function for easier call in main
-  /*
-  ZeroSkewMerge(root, getNodeDelay(root, 3), getNodeDelay(root, 4),
-                calculateManhattanDistance(root, 3, 4),
-                getNodeCapacitance(root, 3), getNodeCapacitance(root, 4)); 
-  
-  ZeroSkewMerge(root, getNodeDelay(root, 4), getNodeDelay(root, 3),
-  calculateManhattanDistance(root, 4, 3),
-  getNodeCapacitance(root, 4), getNodeCapacitance(root, 3)); 
-  */
-  ZeroSkewMerge(root, getNodeDelay(root, 1), getNodeDelay(root, 3),
-  calculateManhattanDistance(root, 1, 3),
-  getNodeCapacitance(root, 1), getNodeCapacitance(root, 3)); 
+  ZeroSkewMerge(root,3,4);
   /*cout << "ZSM "
    << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
                     calculateManhattanDistance(root, 3, 4),
