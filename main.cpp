@@ -652,21 +652,21 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
 
   Node *node1 = findNodeById(root, id1);
   Node *node2 = findNodeById(root, id2);
-  double delaySegment1=getNodeDelay(root,id1);
-  double delaySegment2=getNodeDelay(root,id2);
-  double capacitanceSegment1=getNodeCapacitance(root,id1);
-  double capacitanceSegment2=getNodeCapacitance(root,id2);
-  int lengthOfWire=calculateManhattanDistance(root,id1,id2);
-  
-  cout<<endl;
+  double delaySegment1 = getNodeDelay(root, id1);
+  double delaySegment2 = getNodeDelay(root, id2);
+  double capacitanceSegment1 = getNodeCapacitance(root, id1);
+  double capacitanceSegment2 = getNodeCapacitance(root, id2);
+  int lengthOfWire = calculateManhattanDistance(root, id1, id2);
+
+  cout << endl;
   double x1 = node1->x;
   double y1 = node1->y;
   double x2 = node2->x;
   double y2 = node2->y;
-  cout<<"x1: "<<x1<<endl;
-  cout<<"y1: "<<y1<<endl;
-  cout<<"x2: "<<x2<<endl;
-  cout<<"y2: "<<y2<<endl;
+  cout << "x1: " << x1 << endl;
+  cout << "y1: " << y1 << endl;
+  cout << "x2: " << x2 << endl;
+  cout << "y2: " << y2 << endl;
   // Calculate the initial merging point x
   double numerator = (delaySegment2 - delaySegment1) +
                      resistancePerUnitLength * lengthOfWire *
@@ -679,33 +679,97 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
   if (mergingPointX >= 0 && mergingPointX <= 1) {
     cout << "Tapping point in range, calculating merging point" << endl;
     cout << "X: " << mergingPointX << endl;
-    cout<< "lenth of wire: "<<lengthOfWire<<endl;
-    cout << "merge point sink 1 :" <<ceil(mergingPointX*lengthOfWire) << endl;
-    cout << "merge point sink 2 :" << floor((1-mergingPointX)*lengthOfWire) << endl;
-    vector<Point> points1 = findPoints(x1, y1, ceil(mergingPointX*lengthOfWire));
-    vector<Point> points2 = findPoints(x2, y2, floor((1-mergingPointX)*lengthOfWire));
+    cout << "lenth of wire: " << lengthOfWire << endl;
+    cout << "merge point distance for sink 1 :" << ceil(mergingPointX * lengthOfWire)
+         << endl;
+    cout << "merge point distance for sink 2 :" << floor((1 - mergingPointX) * lengthOfWire)
+         << endl;
+    vector<Point> points1 =
+        findPoints(x1, y1, ceil(mergingPointX * lengthOfWire));
+    vector<Point> points2 =
+        findPoints(x2, y2, floor((1 - mergingPointX) * lengthOfWire));
+    cout << endl;
+    cout << "All solutions for point 1 are:\n";
     for (const Point &point : points1) {
       cout << "(" << point.x << ", " << point.y << ")\n";
     }
-    
+    cout << endl;
+
+    cout << "All solutions for point 2 are:\n";
     for (const Point &point : points2) {
       cout << "(" << point.x << ", " << point.y << ")\n";
     }
+    cout << endl;
+    vector<Point> solutions1, solutions2;
+    cout << "Valid solutions for point 1 are:\n";
+    for (const Point &point : points1) {
+      if (point.x == x1 && point.x >= 0 && point.y >= 0) {
+        // cout << "(" << point.x << ", " << point.y << ")\n";
+        solutions1.push_back(point);
+      }
+    }
+    for (const Point &point : solutions1) {
+      cout << "(" << point.x << ", " << point.y << ")\n";
+    }
+    cout << endl;
+    cout << "Valid solutions for point 2 are:\n";
+    for (const Point &point : points2) {
+      if (point.x == x2 && point.x >= 0 && point.y >= 0) {
+        // cout << "(" << point.x << ", " << point.y << ")\n";
+        solutions2.push_back(point);
+      }
+    }
+
+    for (const Point &point : solutions2) {
+      cout << "(" << point.x << ", " << point.y << ")\n";
+    }
+    // Sort the solutions2 vector based on x and y coordinates
+    sort(solutions1.begin(), solutions1.end(),
+         [](const Point &a, const Point &b) {
+           if (a.x == b.x)
+             return a.y < b.y;
+           return a.x < b.x;
+         });
+
+    // Return the lowest value from the sorted solutions2
+    if (!solutions1.empty()) {
+      cout << "Lowest value in solutions1: (" << solutions1.front().x << ", "
+           << solutions1.front().y << ")\n";
+    }
+
+    // Sort the solutions2 vector based on x and y coordinates
+    sort(solutions2.begin(), solutions2.end(),
+         [](const Point &a, const Point &b) {
+           if (a.x == b.x)
+             return a.y < b.y;
+           return a.x < b.x;
+         });
+
+    // Return the lowest value from the sorted solutions2
+    if (!solutions2.empty()) {
+      cout << "Lowest value in solutions2: (" << solutions2.front().x << ", "
+           << solutions2.front().y << ")\n";
+    }
+
+    cout << endl;
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
-    
+
   } else {
     double lPrime = 0;
+    int extension = 0;
     if (mergingPointX > 1) {
       // For x > 1, tapping point exactly on subtree 2
-      cout << "Tapping point out of range( > 1), extending" << endl;
+      cout << "Tapping point out of range( > 1), extending from Subtree 2" << endl;
       lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment1, 2) +
                      2 * resistancePerUnitLength * capacitancePerUnitLength *
                          (delaySegment2 - delaySegment1)) -
                 resistancePerUnitLength * capacitanceSegment1) /
                (resistancePerUnitLength * capacitancePerUnitLength);
-
-      vector<Point> points = findPoints(x2, y2, lPrime);
+      extension=round(lPrime);
+      cout << "lPrime rounded = " << round(lPrime) << endl;
+      cout << "L: " << lengthOfWire <<"->"<< extension+lengthOfWire<< endl;
+      vector<Point> points = findPoints(x2, y2, (extension+lengthOfWire));
       cout << endl;
       cout << "Unique points satisfying the equation are:\n";
       for (const Point &point : points) {
@@ -714,20 +778,24 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       cout << endl;
       cout << "Valid solutions rooted at subtree 2 are:\n";
       for (const Point &point : points) {
-        if (point.x == x2 && point.x >= 0 && point.y >=0) { 
-        cout << "(" << point.x << ", " << point.y << ")\n";
+        if (point.x == x2 && point.x >= 0 && point.y >= 0) {
+          cout << "(" << point.x << ", " << point.y << ")\n";
         }
       }
     } else {
+      double lPrime = 0;
+      int extension = 0;
       // For x < 0, tapping point on root of subtree 1
-      cout << "Tapping point out of range( < 0), extending" << endl;
+      cout << "Tapping point out of range( < 0), extending from Subtree 1" << endl;
       lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment2, 2) +
                      2 * resistancePerUnitLength * capacitancePerUnitLength *
                          (delaySegment1 - delaySegment2)) -
                 resistancePerUnitLength * capacitanceSegment2) /
                (resistancePerUnitLength * capacitancePerUnitLength);
-
-      vector<Point> points = findPoints(x1, y1, lPrime);
+      extension=round(lPrime);
+      cout << "lPrime rounded = " << round(lPrime) << endl;
+      cout << "L: " << lengthOfWire <<"->"<< extension+lengthOfWire<< endl;
+      vector<Point> points = findPoints(x1, y1, extension+lengthOfWire);
       cout << endl;
       cout << "Unique points satisfying the equation are:\n";
       for (const Point &point : points) {
@@ -736,16 +804,15 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       cout << endl;
       cout << "Valid solutions rooted at subtree 1 are:\n";
       for (const Point &point : points) {
-        if (point.x == x1 && point.x >= 0 && point.y >=0){ 
-        cout << "(" << point.x << ", " << point.y << ")\n";
+        if (point.x == x1 && point.x >= 0 && point.y >= 0) {
+          cout << "(" << point.x << ", " << point.y << ")\n";
         }
       }
     }
-    
+    cout << endl;
     return lPrime;
   }
 }
-
 
 /* Pseudocode
 Node *zeroSkewTree(Node *root) {
@@ -779,7 +846,7 @@ Node *zeroSkewTree(Node *root) {
     // double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
 
     // Update root's location based on the mergePoint
-    // root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified                  
+    // root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified
     // root->y = (root->leftChild->y + root->rightChild->y) / 2; // Simplified
   }
   return root;
@@ -807,7 +874,10 @@ int main() {
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
-  ZeroSkewMerge(root,1,3);
+  ZeroSkewMerge(root, 1, 3);
+  //ZeroSkewMerge(root,3,4);
+  cout<<endl;
+  //ZeroSkewMerge(root,4,3);
   /*cout << "ZSM "
    << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
                     calculateManhattanDistance(root, 3, 4),
