@@ -877,7 +877,7 @@ int main() {
   ZeroSkewMerge(root, 1, 3);
   //ZeroSkewMerge(root,3,4);
   cout<<endl;
-  //ZeroSkewMerge(root,4,3);
+  ZeroSkewMerge(root,4,3);
   /*cout << "ZSM "
    << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
                     calculateManhattanDistance(root, 3, 4),
