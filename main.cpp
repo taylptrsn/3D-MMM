@@ -688,6 +688,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
   cout << "y1: " << y1 << endl;
   cout << "x2: " << x2 << endl;
   cout << "y2: " << y2 << endl;
+  cout << endl;
   // Calculate the initial merging point x
   double numerator = (delaySegment2 - delaySegment1) +
                      resistancePerUnitLength * lengthOfWire *
@@ -698,9 +699,8 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
   double mergingPointX = numerator / denominator;
  
   if (mergingPointX >= 0 && mergingPointX <= 1) {
-    cout << "Tapping point in range, calculating merging point" << endl;
-    cout << "X: " << mergingPointX << endl;
-    cout << "lenth of wire: " << lengthOfWire << endl;
+    cout << "Tapping point in range, calculating merging point X: " << mergingPointX << endl;
+    cout << "length of wire: " << lengthOfWire << endl;
     cout << "merge point distance for sink 1 :" << ceil(mergingPointX * lengthOfWire)
          << endl;
     cout << "merge point distance for sink 2 :" << floor((1 - mergingPointX) * lengthOfWire)
@@ -751,7 +751,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
              return a.y < b.y;
            return a.x < b.x;
          });
-
+    cout << endl;
     // Return the lowest value from the sorted solutions2
     if (!solutions1.empty()) {
       cout << "Lowest value in solutions1: (" << solutions1.front().x << ", "
@@ -765,7 +765,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
              return a.y < b.y;
            return a.x < b.x;
          });
-
+    
     // Return the lowest value from the sorted solutions2
     if (!solutions2.empty()) {
       cout << "Lowest value in solutions2: (" << solutions2.front().x << ", "
@@ -816,14 +816,20 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
            return a.y < b.y;
          return a.x < b.x;
        });
+      cout << endl;
+      // Return the lowest value from the sorted solutions
+      if (!solutions.empty()) {
+        cout << "Lowest value in solutions: (" << solutions.front().x << ", "
+             << solutions.front().y << ")\n";
+      }
       
       /*for (const Point &point : points) {
         if (point.x == x2 && point.x >= 0 && point.y >= 0) {
           cout << "(" << point.x << ", " << point.y << ")\n";
         }
       }*/
-      findLCA(root,id1,id2)->x = points.front().x;
-      findLCA(root,id1,id2)->y = points.front().y;
+      findLCA(root,id1,id2)->x = solutions.front().x;
+      findLCA(root,id1,id2)->y = solutions.front().y;
     } else {
       //vector<Point> solutions;
       double lPrime = 0;
@@ -861,13 +867,20 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
            return a.y < b.y;
          return a.x < b.x;
        });
+      cout << endl;
+      // Return the lowest value from the sorted solutions
+      if (!solutions.empty()) {
+        cout << "Lowest value in solutions: (" << solutions.front().x << ", "
+             << solutions.front().y << ")\n";
+      }
+    
       /*for (const Point &point : points) {
         if (point.x == x1 && point.x >= 0 && point.y >= 0) {
           cout << "(" << point.x << ", " << point.y << ")\n";
         }
       }*/
-      findLCA(root,id1,id2)->x = points.front().x;
-      findLCA(root,id1,id2)->y = points.front().y;
+      findLCA(root,id1,id2)->x = solutions.front().x;
+      findLCA(root,id1,id2)->y = solutions.front().y;
     }
     cout << endl;
     return lPrime;
