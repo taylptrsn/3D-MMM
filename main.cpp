@@ -643,6 +643,26 @@ double getNodeDelay(Node *node, int id) {
   }
   return getNodeDelay(node->rightChild, id);
 }
+Node* findLCA(Node* root, int node1ID, int node2ID) {
+    // Base case: if root is null or if we've found either of the nodes
+    if (root == nullptr || root->id == node1ID || root->id == node2ID) {
+        return root;
+    }
+
+    // Search for node1ID and node2ID in the left and right subtrees
+    Node* leftLCA = findLCA(root->leftChild, node1ID, node2ID);
+    Node* rightLCA = findLCA(root->rightChild, node1ID, node2ID);
+
+    // If node1ID and node2ID are found in left and right subtrees of the current node,
+    // this node is their LCA.
+    if (leftLCA && rightLCA) return root;
+
+    // If both nodes are in the left subtree
+    if (leftLCA != nullptr) return leftLCA;
+
+    // If both nodes are in the right subtree
+    return rightLCA;
+}
 // Function to calculate the Zero Skew Merging point and adjust wire length for
 // zero skew
 double ZeroSkewMerge(Node *root, int id1, int id2) {
@@ -675,7 +695,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       resistancePerUnitLength * lengthOfWire *
       (capacitancePerUnitLength + capacitanceSegment1 + capacitanceSegment2);
   double mergingPointX = numerator / denominator;
-
+ 
   if (mergingPointX >= 0 && mergingPointX <= 1) {
     cout << "Tapping point in range, calculating merging point" << endl;
     cout << "X: " << mergingPointX << endl;
@@ -750,7 +770,9 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       cout << "Lowest value in solutions2: (" << solutions2.front().x << ", "
            << solutions2.front().y << ")\n";
     }
-
+    //cout<<findLCA(root,id1,id2)->id<<endl;
+    findLCA(root,id1,id2)->x = solutions1.front().x;
+    findLCA(root,id1,id2)->y = solutions2.front().x;
     cout << endl;
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
@@ -878,13 +900,15 @@ int main() {
   //ZeroSkewMerge(root,3,4);
   cout<<endl;
   ZeroSkewMerge(root,4,3);
+  //cout<<findLCA(root,3,4)->id<<endl;
   /*cout << "ZSM "
    << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
                     calculateManhattanDistance(root, 3, 4),
                     getNodeCapacitance(root, 3),
                     getNodeCapacitance(root, 4))
    << endl; */
-
+  cout<<"new"<<endl;
+  printTree(root);
   // Clean up memory
   deleteTree(root);
   return 0;
