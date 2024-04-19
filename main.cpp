@@ -86,6 +86,7 @@ ClockSource clockSource;
 int numSinks;
 int nodeID = 0;    // Global variable to keep track of the next node ID
 int zCutCount = 0; // Keeps track of the number of Z-cuts performed
+int ZeroSkewMerges = 0; // Keeps track of the number of ZSMs performed
 vector<Sink> sinks;
 vector<string> dieColors = {"Gray", "Red",    "Green",
                             "Blue", "Purple", "Lime"}; // Define colors for dies
@@ -743,7 +744,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     for (const Point &point : solutions2) {
       cout << "(" << point.x << ", " << point.y << ")\n";
     }
-    // Sort the solutions2 vector based on x and y coordinates
+    // Sort the solutions1 vector based on x and y coordinates
     sort(solutions1.begin(), solutions1.end(),
          [](const Point &a, const Point &b) {
            if (a.x == b.x)
@@ -778,6 +779,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
 
   } else {
+    vector<Point> solutions;
     double lPrime = 0;
     int extension = 0;
     if (mergingPointX > 1) {
@@ -798,13 +800,32 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
         cout << "(" << point.x << ", " << point.y << ")\n";
       }
       cout << endl;
-      cout << "Valid solutions rooted at subtree 2 are:\n";
+      cout << "Valid solution(s) rooted at subtree 2 are:\n";
       for (const Point &point : points) {
+        if (point.x == x2 && point.x >= 0 && point.y >= 0) {
+          solutions.push_back(point);
+        }
+      }
+      for (const Point &point : solutions) {
+        cout << "(" << point.x << ", " << point.y << ")\n";
+      }
+      
+      sort(solutions.begin(), solutions.end(),
+       [](const Point &a, const Point &b) {
+         if (a.x == b.x)
+           return a.y < b.y;
+         return a.x < b.x;
+       });
+      
+      /*for (const Point &point : points) {
         if (point.x == x2 && point.x >= 0 && point.y >= 0) {
           cout << "(" << point.x << ", " << point.y << ")\n";
         }
-      }
+      }*/
+      findLCA(root,id1,id2)->x = points.front().x;
+      findLCA(root,id1,id2)->y = points.front().y;
     } else {
+      //vector<Point> solutions;
       double lPrime = 0;
       int extension = 0;
       // For x < 0, tapping point on root of subtree 1
@@ -824,12 +845,29 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
         cout << "(" << point.x << ", " << point.y << ")\n";
       }
       cout << endl;
-      cout << "Valid solutions rooted at subtree 1 are:\n";
+      cout << "Valid solution(s) rooted at subtree 1 are:\n";
       for (const Point &point : points) {
+        if (point.x == x1 && point.x >= 0 && point.y >= 0) {
+          solutions.push_back(point);
+        }
+      }
+      for (const Point &point : solutions) {
+        cout << "(" << point.x << ", " << point.y << ")\n";
+      }
+
+      sort(solutions.begin(), solutions.end(),
+       [](const Point &a, const Point &b) {
+         if (a.x == b.x)
+           return a.y < b.y;
+         return a.x < b.x;
+       });
+      /*for (const Point &point : points) {
         if (point.x == x1 && point.x >= 0 && point.y >= 0) {
           cout << "(" << point.x << ", " << point.y << ")\n";
         }
-      }
+      }*/
+      findLCA(root,id1,id2)->x = points.front().x;
+      findLCA(root,id1,id2)->y = points.front().y;
     }
     cout << endl;
     return lPrime;
@@ -863,21 +901,18 @@ Node *zeroSkewTree(Node *root) {
   // Check if both children have physical locations
   if (hasPhysicalLocation(root->leftChild) &&
       hasPhysicalLocation(root->rightChild)) {
-
-    // Perform ZeroSkewMerge to determine the optimal merging strategy
-    // double mergePoint = ZeroSkewMerge(delay1, delay2, distance, cap1, cap2);
-
-    // Update root's location based on the mergePoint
-    // root->x = (root->leftChild->x + root->rightChild->x) / 2; // Simplified
-    // root->y = (root->leftChild->y + root->rightChild->y) / 2; // Simplified
+    
+    ZeroSkewMerge(root, root->leftChild->id,  root->rightChild->id);
   }
+  ZeroSkewMerges++;
+  cout<<"ZeroSkewMerges: "<<ZeroSkewMerges<<endl;
   return root;
 }
 
 int main() {
   int bound = 10;
   // Call parseInput to read and parse the input file
-  parseInput("benchmark1.txt");
+  parseInput("benchmark5.txt");
   //  Display parsed data
   displayParsedData();
 
@@ -896,10 +931,10 @@ int main() {
   cout << endl;
   cout << "Abstract Tree:" << endl;
   printTree(root);
-  ZeroSkewMerge(root, 1, 3);
+  //ZeroSkewMerge(root, 3, 2);
   //ZeroSkewMerge(root,3,4);
   cout<<endl;
-  ZeroSkewMerge(root,4,3);
+  //ZeroSkewMerge(root,4,3);
   //cout<<findLCA(root,3,4)->id<<endl;
   /*cout << "ZSM "
    << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
@@ -907,9 +942,10 @@ int main() {
                     getNodeCapacitance(root, 3),
                     getNodeCapacitance(root, 4))
    << endl; */
+  zeroSkewTree(root);
   cout<<"new"<<endl;
   printTree(root);
-  // Clean up memory
+  //Clean up memory
   deleteTree(root);
   return 0;
 }
