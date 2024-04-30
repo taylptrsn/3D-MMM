@@ -4,14 +4,13 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <vector>
 /* TODO
 - Unit Conversion at Data read-in
 - Split into header files
-- Complete Zeroskewtree function
-- Make main call zeroskewtree for each die level
+- Account for Vertical wirelength
 - Delay buffering instead of wire elongation
-- rework ZeroSkewMerge
 */
 using namespace std;
 
@@ -84,8 +83,8 @@ BufferUnits bufferUnits;
 TSVUnits tsvUnits;
 ClockSource clockSource;
 int numSinks;
-int nodeID = 0;    // Global variable to keep track of the next node ID
-int zCutCount = 0; // Keeps track of the number of Z-cuts performed
+int nodeID = 0;         // Global variable to keep track of the next node ID
+int zCutCount = 0;      // Keeps track of the number of Z-cuts performed
 int ZeroSkewMerges = 0; // Keeps track of the number of ZSMs performed
 vector<Sink> sinks;
 vector<string> dieColors = {"Gray", "Red",    "Green",
@@ -644,25 +643,27 @@ double getNodeDelay(Node *node, int id) {
   }
   return getNodeDelay(node->rightChild, id);
 }
-Node* findLCA(Node* root, int node1ID, int node2ID) {
-    // Base case: if root is null or if we've found either of the nodes
-    if (root == nullptr || root->id == node1ID || root->id == node2ID) {
-        return root;
-    }
+Node *findLCA(Node *root, int node1ID, int node2ID) {
+  // Base case: if root is null or if we've found either of the nodes
+  if (root == nullptr || root->id == node1ID || root->id == node2ID) {
+    return root;
+  }
 
-    // Search for node1ID and node2ID in the left and right subtrees
-    Node* leftLCA = findLCA(root->leftChild, node1ID, node2ID);
-    Node* rightLCA = findLCA(root->rightChild, node1ID, node2ID);
+  // Search for node1ID and node2ID in the left and right subtrees
+  Node *leftLCA = findLCA(root->leftChild, node1ID, node2ID);
+  Node *rightLCA = findLCA(root->rightChild, node1ID, node2ID);
 
-    // If node1ID and node2ID are found in left and right subtrees of the current node,
-    // this node is their LCA.
-    if (leftLCA && rightLCA) return root;
+  // If node1ID and node2ID are found in left and right subtrees of the current
+  // node, this node is their LCA.
+  if (leftLCA && rightLCA)
+    return root;
 
-    // If both nodes are in the left subtree
-    if (leftLCA != nullptr) return leftLCA;
+  // If both nodes are in the left subtree
+  if (leftLCA != nullptr)
+    return leftLCA;
 
-    // If both nodes are in the right subtree
-    return rightLCA;
+  // If both nodes are in the right subtree
+  return rightLCA;
 }
 // Function to calculate the Zero Skew Merging point and adjust wire length for
 // zero skew
@@ -697,14 +698,15 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       resistancePerUnitLength * lengthOfWire *
       (capacitancePerUnitLength + capacitanceSegment1 + capacitanceSegment2);
   double mergingPointX = numerator / denominator;
- 
+
   if (mergingPointX >= 0 && mergingPointX <= 1) {
-    cout << "Tapping point in range, calculating merging point X: " << mergingPointX << endl;
+    cout << "Tapping point in range, calculating merging point X: "
+         << mergingPointX << endl;
     cout << "length of wire: " << lengthOfWire << endl;
-    cout << "merge point distance for sink 1 :" << ceil(mergingPointX * lengthOfWire)
-         << endl;
-    cout << "merge point distance for sink 2 :" << floor((1 - mergingPointX) * lengthOfWire)
-         << endl;
+    cout << "merge point distance for sink 1 :"
+         << ceil(mergingPointX * lengthOfWire) << endl;
+    cout << "merge point distance for sink 2 :"
+         << floor((1 - mergingPointX) * lengthOfWire) << endl;
     vector<Point> points1 =
         findPoints(x1, y1, ceil(mergingPointX * lengthOfWire));
     vector<Point> points2 =
@@ -725,7 +727,6 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     cout << "Valid solutions for point 1 are:\n";
     for (const Point &point : points1) {
       if (point.x == x1 && point.x >= 0 && point.y >= 0) {
-        // cout << "(" << point.x << ", " << point.y << ")\n";
         solutions1.push_back(point);
       }
     }
@@ -736,7 +737,6 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     cout << "Valid solutions for point 2 are:\n";
     for (const Point &point : points2) {
       if (point.x == x2 && point.x >= 0 && point.y >= 0) {
-        // cout << "(" << point.x << ", " << point.y << ")\n";
         solutions2.push_back(point);
       }
     }
@@ -765,15 +765,15 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
              return a.y < b.y;
            return a.x < b.x;
          });
-    
+
     // Return the lowest value from the sorted solutions2
     if (!solutions2.empty()) {
       cout << "Lowest value in solutions2: (" << solutions2.front().x << ", "
            << solutions2.front().y << ")\n";
     }
-    //cout<<findLCA(root,id1,id2)->id<<endl;
-    findLCA(root,id1,id2)->x = solutions1.front().x;
-    findLCA(root,id1,id2)->y = solutions2.front().x;
+    // cout<<findLCA(root,id1,id2)->id<<endl;
+    findLCA(root, id1, id2)->x = solutions1.front().x;
+    findLCA(root, id1, id2)->y = solutions2.front().x;
     cout << endl;
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
@@ -784,16 +784,17 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     int extension = 0;
     if (mergingPointX > 1) {
       // For x > 1, tapping point exactly on subtree 2
-      cout << "Tapping point out of range( > 1), extending from Subtree 2" << endl;
+      cout << "Tapping point out of range( > 1), extending from Subtree 2"
+           << endl;
       lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment1, 2) +
                      2 * resistancePerUnitLength * capacitancePerUnitLength *
                          (delaySegment2 - delaySegment1)) -
                 resistancePerUnitLength * capacitanceSegment1) /
                (resistancePerUnitLength * capacitancePerUnitLength);
-      extension=round(lPrime);
+      extension = round(lPrime);
       cout << "lPrime rounded = " << round(lPrime) << endl;
-      cout << "L: " << lengthOfWire <<"->"<< extension+lengthOfWire<< endl;
-      vector<Point> points = findPoints(x2, y2, (extension+lengthOfWire));
+      cout << "L: " << lengthOfWire << "->" << extension + lengthOfWire << endl;
+      vector<Point> points = findPoints(x2, y2, (extension + lengthOfWire));
       cout << endl;
       cout << "Unique points satisfying the equation are:\n";
       for (const Point &point : points) {
@@ -809,42 +810,38 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       for (const Point &point : solutions) {
         cout << "(" << point.x << ", " << point.y << ")\n";
       }
-      
+
       sort(solutions.begin(), solutions.end(),
-       [](const Point &a, const Point &b) {
-         if (a.x == b.x)
-           return a.y < b.y;
-         return a.x < b.x;
-       });
+           [](const Point &a, const Point &b) {
+             if (a.x == b.x)
+               return a.y < b.y;
+             return a.x < b.x;
+           });
       cout << endl;
       // Return the lowest value from the sorted solutions
       if (!solutions.empty()) {
         cout << "Lowest value in solutions: (" << solutions.front().x << ", "
              << solutions.front().y << ")\n";
       }
-      
-      /*for (const Point &point : points) {
-        if (point.x == x2 && point.x >= 0 && point.y >= 0) {
-          cout << "(" << point.x << ", " << point.y << ")\n";
-        }
-      }*/
-      findLCA(root,id1,id2)->x = solutions.front().x;
-      findLCA(root,id1,id2)->y = solutions.front().y;
+
+      findLCA(root, id1, id2)->x = solutions.front().x;
+      findLCA(root, id1, id2)->y = solutions.front().y;
     } else {
-      //vector<Point> solutions;
+      // vector<Point> solutions;
       double lPrime = 0;
       int extension = 0;
       // For x < 0, tapping point on root of subtree 1
-      cout << "Tapping point out of range( < 0), extending from Subtree 1" << endl;
+      cout << "Tapping point out of range( < 0), extending from Subtree 1"
+           << endl;
       lPrime = (sqrt(pow(resistancePerUnitLength * capacitanceSegment2, 2) +
                      2 * resistancePerUnitLength * capacitancePerUnitLength *
                          (delaySegment1 - delaySegment2)) -
                 resistancePerUnitLength * capacitanceSegment2) /
                (resistancePerUnitLength * capacitancePerUnitLength);
-      extension=round(lPrime);
+      extension = round(lPrime);
       cout << "lPrime rounded = " << round(lPrime) << endl;
-      cout << "L: " << lengthOfWire <<"->"<< extension+lengthOfWire<< endl;
-      vector<Point> points = findPoints(x1, y1, extension+lengthOfWire);
+      cout << "L: " << lengthOfWire << "->" << extension + lengthOfWire << endl;
+      vector<Point> points = findPoints(x1, y1, extension + lengthOfWire);
       cout << endl;
       cout << "Unique points satisfying the equation are:\n";
       for (const Point &point : points) {
@@ -862,45 +859,32 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       }
 
       sort(solutions.begin(), solutions.end(),
-       [](const Point &a, const Point &b) {
-         if (a.x == b.x)
-           return a.y < b.y;
-         return a.x < b.x;
-       });
+           [](const Point &a, const Point &b) {
+             if (a.x == b.x)
+               return a.y < b.y;
+             return a.x < b.x;
+           });
       cout << endl;
       // Return the lowest value from the sorted solutions
       if (!solutions.empty()) {
         cout << "Lowest value in solutions: (" << solutions.front().x << ", "
              << solutions.front().y << ")\n";
       }
-    
-      /*for (const Point &point : points) {
-        if (point.x == x1 && point.x >= 0 && point.y >= 0) {
-          cout << "(" << point.x << ", " << point.y << ")\n";
-        }
-      }*/
-      findLCA(root,id1,id2)->x = solutions.front().x;
-      findLCA(root,id1,id2)->y = solutions.front().y;
+
+      findLCA(root, id1, id2)->x = solutions.front().x;
+      findLCA(root, id1, id2)->y = solutions.front().y;
     }
     cout << endl;
     return lPrime;
   }
 }
 
-/* Pseudocode
-Node *zeroSkewTree(Node *root) {
-  Top down, from clock source / root if subtree has 2 locations in x, y, z,
-      zeroskew merge if any node doesnt have a physical location,
-      visit children to see if they have 2 locations and perform
-          zeroskewmerge if they do
-} */
-
 // Helper function to check if a node has a physical location
 bool hasPhysicalLocation(const Node *node) {
   return node != nullptr && !(node->x == -1 && node->y == -1 && node->z == -1);
 }
 
-// Main recursive function to perform zero skew merging WIP
+// Main recursive function to perform zero skew merging
 Node *zeroSkewTree(Node *root) {
   if (!root || (root->leftChild == nullptr && root->rightChild == nullptr)) {
     // Leaf node or empty subtree, no merging required
@@ -914,51 +898,41 @@ Node *zeroSkewTree(Node *root) {
   // Check if both children have physical locations
   if (hasPhysicalLocation(root->leftChild) &&
       hasPhysicalLocation(root->rightChild)) {
-    
-    ZeroSkewMerge(root, root->leftChild->id,  root->rightChild->id);
+
+    ZeroSkewMerge(root, root->leftChild->id, root->rightChild->id);
   }
   ZeroSkewMerges++;
-  cout<<"ZeroSkewMerges: "<<ZeroSkewMerges<<endl;
+  cout << "ZeroSkewMerges: " << ZeroSkewMerges << endl;
   return root;
 }
 
 int main() {
   int bound = 10;
-  // Call parseInput to read and parse the input file
   parseInput("benchmark5.txt");
-  //  Display parsed data
   displayParsedData();
+  // New block to separate sinks by their z-coordinate
+  map<int, vector<Sink>> sinksByZ;
+  for (const auto &sink : sinks) {
+    sinksByZ[sink.z].push_back(sink);
+  }
+  vector<Node *> roots; // To store the root of each subtrees created per z-coordinate
+  for (const auto &pair : sinksByZ) {
+    int z = pair.first;
+    const auto &sinksGroup = pair.second;
+    Node *root = AbsTreeGen3D(sinksGroup, bound);
 
-  // Generate the 3D tree
-  Node *root = AbsTreeGen3D(sinks, bound);
-  assignPhysicalLocations(root);
-  colorTree(root, dieColors, clockSource);
-  cout << "Number of Z-cuts performed: " << zCutCount << endl;
-  // Print the sinks of generated tree
-  cout << endl;
-  cout << "Sinks of Abstract Tree:" << endl;
-  printLeaves(root);
-  // Calculate hierarchical delays for the tree
-  hierarchicalDelay(root);
-  // Print the generated tree
-  cout << endl;
-  cout << "Abstract Tree:" << endl;
-  printTree(root);
-  //ZeroSkewMerge(root, 3, 2);
-  //ZeroSkewMerge(root,3,4);
-  cout<<endl;
-  //ZeroSkewMerge(root,4,3);
-  //cout<<findLCA(root,3,4)->id<<endl;
-  /*cout << "ZSM "
-   << ZeroSkewMerge(getNodeDelay(root, 3), getNodeDelay(root, 4),
-                    calculateManhattanDistance(root, 3, 4),
-                    getNodeCapacitance(root, 3),
-                    getNodeCapacitance(root, 4))
-   << endl; */
-  zeroSkewTree(root);
-  cout<<"new"<<endl;
-  printTree(root);
-  //Clean up memory
-  deleteTree(root);
+    // Creating a new root node with the x and y coordinates from the clock source and z from the current tier
+    Node *newRoot = new Node({}, "Gray", 0.0, 0.0, false, nodeID++, clockSource.x, clockSource.y, z);
+    newRoot->rightChild = root; // Attach the generated tree as the left child of the new root
+    assignPhysicalLocations(newRoot);
+    hierarchicalDelay(newRoot);
+    cout << "\nProcessing z-coordinate: " << z << endl;
+    roots.push_back(zeroSkewTree(newRoot)); // Apply zero skew tree operation and store the root
+  }
+  for (auto root : roots) {
+    cout << "\nZero Skew Tree for tier: " << root->z << endl;
+    printTree(root);
+    deleteTree(root); // Clean up each subtree
+  }
   return 0;
 }
