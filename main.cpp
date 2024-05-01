@@ -793,7 +793,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
                (resistancePerUnitLength * capacitancePerUnitLength);
       extension = round(lPrime);
       cout << "lPrime rounded = " << round(lPrime) << endl;
-      cout << "L: " << lengthOfWire << "->" << extension + lengthOfWire << endl;
+      cout << "Extending L from " << lengthOfWire << " to " << extension + lengthOfWire << endl;
       vector<Point> points = findPoints(x2, y2, (extension + lengthOfWire));
       cout << endl;
       cout << "Unique points satisfying the equation are:\n";
@@ -840,7 +840,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
                (resistancePerUnitLength * capacitancePerUnitLength);
       extension = round(lPrime);
       cout << "lPrime rounded = " << round(lPrime) << endl;
-      cout << "L: " << lengthOfWire << "->" << extension + lengthOfWire << endl;
+      cout << "L from " << lengthOfWire << " to " << extension + lengthOfWire << endl;
       vector<Point> points = findPoints(x1, y1, extension + lengthOfWire);
       cout << endl;
       cout << "Unique points satisfying the equation are:\n";
@@ -919,15 +919,16 @@ int main() {
   for (const auto &pair : sinksByZ) {
     int z = pair.first;
     const auto &sinksGroup = pair.second;
+    // For each z-coordinate, generate the tree and then perform zero skew tree
+    // transformation
     Node *root = AbsTreeGen3D(sinksGroup, bound);
-
-    // Creating a new root node with the x and y coordinates from the clock source and z from the current tier
-    Node *newRoot = new Node({}, "Gray", 0.0, 0.0, false, nodeID++, clockSource.x, clockSource.y, z);
-    newRoot->rightChild = root; // Attach the generated tree as the left child of the new root
-    assignPhysicalLocations(newRoot);
-    hierarchicalDelay(newRoot);
+    root->z = z; // Assign the z coordinate of the sink group to the root node
+    assignPhysicalLocations(root);
+    hierarchicalDelay(root);
+    // colorTree(root, dieColors, clockSource);
     cout << "\nProcessing z-coordinate: " << z << endl;
-    roots.push_back(zeroSkewTree(newRoot)); // Apply zero skew tree operation and store the root
+    roots.push_back(zeroSkewTree(
+        root)); // Apply zero skew tree operation and store the root
   }
   for (auto root : roots) {
     cout << "\nZero Skew Tree for tier: " << root->z << endl;
