@@ -10,7 +10,8 @@
 - Unit Conversion at Data read-in
 - Split into header files
 - Account for Vertical wirelength
-- Delay buffering instead of wire elongation
+- Delay buffering instead of wire elongation (if wire is elongated more than 1.5x original legnth)
+- Make sure code considers downstream delay 
 */
 using namespace std;
 
@@ -774,6 +775,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     // cout<<findLCA(root,id1,id2)->id<<endl;
     findLCA(root, id1, id2)->x = solutions1.front().x;
     findLCA(root, id1, id2)->y = solutions2.front().x;
+    findLCA(root, id1, id2)->z = node1->z;
     cout << endl;
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
@@ -826,6 +828,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
 
       findLCA(root, id1, id2)->x = solutions.front().x;
       findLCA(root, id1, id2)->y = solutions.front().y;
+       findLCA(root, id1, id2)->z = node1->z;
     } else {
       // vector<Point> solutions;
       double lPrime = 0;
@@ -873,6 +876,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
 
       findLCA(root, id1, id2)->x = solutions.front().x;
       findLCA(root, id1, id2)->y = solutions.front().y;
+       findLCA(root, id1, id2)->z = node1->z;
     }
     cout << endl;
     return lPrime;
@@ -919,19 +923,19 @@ int main() {
   for (const auto &pair : sinksByZ) {
     int z = pair.first;
     const auto &sinksGroup = pair.second;
-    // For each z-coordinate, generate the tree and then perform zero skew tree
-    // transformation
     Node *root = AbsTreeGen3D(sinksGroup, bound);
-    root->z = z; // Assign the z coordinate of the sink group to the root node
-    assignPhysicalLocations(root);
-    hierarchicalDelay(root);
-    // colorTree(root, dieColors, clockSource);
+
+    // Creating a new root node with the x and y coordinates from the clock source and z from the current tier
+    Node *newRoot = new Node({}, "Gray", 0.0, 0.0, false, nodeID++, clockSource.x, clockSource.y, z);
+    newRoot->rightChild = root; // Attach the generated tree as the left child of the new root
+    assignPhysicalLocations(newRoot);
+    hierarchicalDelay(newRoot);
     cout << "\nProcessing z-coordinate: " << z << endl;
-    roots.push_back(zeroSkewTree(
-        root)); // Apply zero skew tree operation and store the root
+    roots.push_back(zeroSkewTree(newRoot)); // Apply zero skew tree operation and store the root
   }
   for (auto root : roots) {
     cout << "\nZero Skew Tree for tier: " << root->z << endl;
+    cout<<endl;
     printTree(root);
     deleteTree(root); // Clean up each subtree
   }
