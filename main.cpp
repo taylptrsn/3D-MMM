@@ -10,8 +10,9 @@
 - Unit Conversion at Data read-in
 - Split into header files
 - Account for Vertical wirelength
-- Delay buffering instead of wire elongation (if wire is elongated more than 1.5x original legnth)
-- Make sure code considers downstream delay 
+- Delay buffering instead of wire elongation (if wire is elongated more
+than 1.5x original legnth)
+- Make sure code considers downstream delay
 */
 using namespace std;
 
@@ -77,6 +78,7 @@ struct Node {
         color(color), capacitance(capacitance), resistance(resistance),
         isBuffered(isBuffered), x(x), y(y), z(z) {}
 };
+
 // Global Variables
 Layout layout;
 WireUnits wireUnits;
@@ -211,7 +213,17 @@ int getMaxZ(const vector<Sink> &sinks) {
   return maxZ;
 }
 
+vector<Point> findPoints(double x1, double y1, double mDist) {
+  return {
+      {x1 + mDist, y1}, // Right
+      {x1 - mDist, y1}, // Left
+      {x1, y1 + mDist}, // Up
+      {x1, y1 - mDist}  // Down
+  };
+}
+
 // Core Logic
+
 // Function to perform Z-cut
 void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
           vector<Sink> &Sb) {
@@ -261,6 +273,7 @@ void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
   zCutCount++;
 }
 
+// Abstract Tree Generation
 Node *AbsTreeGen3D(const vector<Sink> &S, int B) {
   // cout << "B " << B << endl;
   int B1 = 0;
@@ -368,6 +381,7 @@ void printTree(Node *node, int level = 0) {
     printTree(node->rightChild, level + 1);
   }
 }
+
 void printLeaves(const Node *node) {
   if (node == nullptr) {
     return;
@@ -413,13 +427,12 @@ void colorTree(Node *node, const vector<string> &dieColors,
   }
   // Assign colors to the sinks within this node
   for (auto &sink : node->sinks) {
-    // Assuming all sinks in a node have the same color, so assign the node's
-    // color
     sink.color = node->color;
   }
   colorTree(node->leftChild, dieColors, source, depth + 1);
   colorTree(node->rightChild, dieColors, source, depth + 1);
 }
+
 // Helper function to find a node by its ID
 Node *findNodeById(Node *node, int id) {
   if (node == nullptr)
@@ -475,67 +488,9 @@ void assignPhysicalLocations(Node *node) {
   assignPhysicalLocations(node->rightChild);
 }
 
-// Function to parse input from a file
-void parseInput(const string &filename) {
-  ifstream inputFile(filename);
-  if (!inputFile.is_open()) {
-    cerr << "Error opening file!" << endl;
-    exit(1); // Exit if file cannot be opened
-  }
-  // Parse input file
-  inputFile >> layout.width >> layout.height >> layout.numDies;
-  inputFile.ignore(numeric_limits<streamsize>::max(),
-                   '\n'); // Ignore the rest of the line
-  inputFile >> wireUnits.resistance >> wireUnits.capacitance;
-  inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  inputFile >> bufferUnits.outputResistance >> bufferUnits.inputCapacitance >>
-      bufferUnits.intrinsicDelay;
-  inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  inputFile >> tsvUnits.resistance >> tsvUnits.capacitance;
-  inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  inputFile >> clockSource.x >> clockSource.y >> clockSource.z >>
-      clockSource.outputResistance;
-  inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  inputFile >> numSinks;
-  inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  for (int i = 0; i < numSinks; ++i) {
-    Sink sink;
-    inputFile >> sink.x >> sink.y >> sink.z >> sink.inputCapacitance;
-    sinks.push_back(sink);
-    inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
-  }
-  inputFile.close();
-}
-
-void displayParsedData() {
-  cout << "Layout Area: (" << layout.width << "," << layout.height
-       << ")(x,y)(um)" << endl;
-  cout << "Number Of Dies: " << layout.numDies << endl;
-  cout << "Unit Wire Resistance: " << wireUnits.resistance << "(ohm/um)"
-       << endl;
-  cout << "Unit Wire Capacitance: " << wireUnits.capacitance << "(fF/um)"
-       << endl;
-  cout << "Buffer Output Resistance(ohm): " << bufferUnits.outputResistance
-       << endl;
-  cout << "Buffer Input Capacitance(fF): " << bufferUnits.inputCapacitance
-       << endl;
-  cout << "Buffer Intrinsic Delay(ps): " << bufferUnits.intrinsicDelay << endl;
-  cout << "TSV Resistance(ohm): " << tsvUnits.resistance << endl;
-  cout << "TSV Capacitance(fF): " << tsvUnits.capacitance << endl;
-  cout << "Clock Source: (" << clockSource.x << "," << clockSource.y << ","
-       << clockSource.z << ")(x,y,z) " << endl;
-  cout << "Clock Output resistance(ohm): " << clockSource.outputResistance
-       << endl;
-  cout << endl;
-  cout << "Sinks:" << endl;
-  for (const auto &sink : sinks) {
-    cout << "(" << sink.x << "," << sink.y << "," << sink.z
-         << ")(x,y,z), Input Capacitance - " << sink.inputCapacitance << " fF"
-         << endl;
-  }
-  cout << endl;
-  cout << "Median of x coordinates: " << calculateMedianX(sinks) << endl;
-  cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
+// Helper function to check if a node has a physical location
+bool hasPhysicalLocation(const Node *node) {
+  return node != nullptr && !(node->x == -1 && node->y == -1 && node->z == -1);
 }
 
 double depthFirstCapacitance(Node *node) {
@@ -569,15 +524,6 @@ double depthFirstCapacitance(Node *node) {
   return nodeCapacitance;
 }
 
-vector<Point> findPoints(double x1, double y1, double mDist) {
-  return {
-      {x1 + mDist, y1}, // Right
-      {x1 - mDist, y1}, // Left
-      {x1, y1 + mDist}, // Up
-      {x1, y1 - mDist}  // Down
-  };
-}
-
 void depthFirstDelay(Node *node, double accumulatedResistance) {
   if (!node)
     return; // Base case: node is null
@@ -599,9 +545,7 @@ void depthFirstDelay(Node *node, double accumulatedResistance) {
     node->elmoreDelay = totalResistance * node->capacitance + delay;
   } else {
     // For internal nodes, delay is calculated based on the subtree capacitance
-    // (already updated by depthFirstCapacitance)
-    double subtreeCapacitance =
-        node->capacitance; // Assuming updated by depthFirstCapacitance
+    double subtreeCapacitance = node->capacitance;
     node->elmoreDelay = totalResistance * subtreeCapacitance + delay;
   }
   // Recursively calculate delay for child nodes, passing the total accumulated
@@ -615,7 +559,7 @@ void depthFirstDelay(Node *node, double accumulatedResistance) {
 // Function to calculate hierarchical delay for the entire tree
 void hierarchicalDelay(Node *node) {
   depthFirstCapacitance(node);
-  depthFirstDelay(node, clockSource.outputResistance);
+  // depthFirstDelay(node, clockSource.outputResistance);
 }
 double getNodeCapacitance(Node *node, int id) {
   if (node == nullptr) {
@@ -644,41 +588,38 @@ double getNodeDelay(Node *node, int id) {
   }
   return getNodeDelay(node->rightChild, id);
 }
+
 Node *findLCA(Node *root, int node1ID, int node2ID) {
-  // Base case: if root is null or if we've found either of the nodes
   if (root == nullptr || root->id == node1ID || root->id == node2ID) {
     return root;
   }
 
-  // Search for node1ID and node2ID in the left and right subtrees
   Node *leftLCA = findLCA(root->leftChild, node1ID, node2ID);
   Node *rightLCA = findLCA(root->rightChild, node1ID, node2ID);
 
-  // If node1ID and node2ID are found in left and right subtrees of the current
-  // node, this node is their LCA.
   if (leftLCA && rightLCA)
     return root;
-
-  // If both nodes are in the left subtree
-  if (leftLCA != nullptr)
-    return leftLCA;
-
-  // If both nodes are in the right subtree
-  return rightLCA;
+  return (leftLCA != nullptr) ? leftLCA : rightLCA;
 }
-// Function to calculate the Zero Skew Merging point and adjust wire length for
-// zero skew
+
 double ZeroSkewMerge(Node *root, int id1, int id2) {
   // Use global variables for resistance and capacitance per unit length
   double resistancePerUnitLength = wireUnits.resistance;
   double capacitancePerUnitLength = wireUnits.capacitance;
-
+  Node *parent = findLCA(root, id1, id2);
+  cout << "Parent: " << parent->id << endl;
   Node *node1 = findNodeById(root, id1);
   Node *node2 = findNodeById(root, id2);
-  double delaySegment1 = getNodeDelay(root, id1);
-  double delaySegment2 = getNodeDelay(root, id2);
+  double delaySegment1 =
+      getNodeDelay(root, parent->id) - getNodeDelay(root, id1);
+  double delaySegment2 =
+      getNodeDelay(root, parent->id) - getNodeDelay(root, id2);
+  cout << delaySegment1 << endl;
+  cout << delaySegment2 << endl;
   double capacitanceSegment1 = getNodeCapacitance(root, id1);
+  cout << "CapSeg1: " << capacitanceSegment1 << endl;
   double capacitanceSegment2 = getNodeCapacitance(root, id2);
+  cout << "CapSeg2: " << capacitanceSegment2 << endl;
   int lengthOfWire = calculateManhattanDistance(root, id1, id2);
 
   cout << endl;
@@ -692,12 +633,13 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
   cout << "y2: " << y2 << endl;
   cout << endl;
   // Calculate the initial merging point x
-  double numerator = (delaySegment2 - delaySegment1) +
-                     resistancePerUnitLength * lengthOfWire *
-                         (capacitanceSegment2 + (capacitancePerUnitLength / 2));
-  double denominator =
+  double numerator =
+      (delaySegment2 - delaySegment1) +
       resistancePerUnitLength * lengthOfWire *
-      (capacitancePerUnitLength + capacitanceSegment1 + capacitanceSegment2);
+          (capacitanceSegment2 + (capacitancePerUnitLength * lengthOfWire / 2));
+  double denominator = resistancePerUnitLength * lengthOfWire *
+                       (capacitancePerUnitLength * lengthOfWire +
+                        capacitanceSegment1 + capacitanceSegment2);
   double mergingPointX = numerator / denominator;
 
   if (mergingPointX >= 0 && mergingPointX <= 1) {
@@ -773,9 +715,11 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
            << solutions2.front().y << ")\n";
     }
     // cout<<findLCA(root,id1,id2)->id<<endl;
-    findLCA(root, id1, id2)->x = solutions1.front().x;
-    findLCA(root, id1, id2)->y = solutions2.front().x;
-    findLCA(root, id1, id2)->z = node1->z;
+    if (!solutions1.empty() && !solutions2.empty()) {
+      parent->x = (solutions1.front().x + solutions2.front().x) / 2;
+      parent->y = (solutions1.front().y + solutions2.front().y) / 2;
+      parent->z = node1->z;
+    }
     cout << endl;
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
@@ -795,7 +739,8 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
                (resistancePerUnitLength * capacitancePerUnitLength);
       extension = round(lPrime);
       cout << "lPrime rounded = " << round(lPrime) << endl;
-      cout << "Extending L from " << lengthOfWire << " to " << extension + lengthOfWire << endl;
+      cout << "Extending L from " << lengthOfWire << " to "
+           << extension + lengthOfWire << endl;
       vector<Point> points = findPoints(x2, y2, (extension + lengthOfWire));
       cout << endl;
       cout << "Unique points satisfying the equation are:\n";
@@ -824,11 +769,11 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       if (!solutions.empty()) {
         cout << "Lowest value in solutions: (" << solutions.front().x << ", "
              << solutions.front().y << ")\n";
-      }
 
-      findLCA(root, id1, id2)->x = solutions.front().x;
-      findLCA(root, id1, id2)->y = solutions.front().y;
-       findLCA(root, id1, id2)->z = node1->z;
+        parent->x = solutions.front().x;
+        parent->y = solutions.front().y;
+        parent->z = node1->z;
+      }
     } else {
       // vector<Point> solutions;
       double lPrime = 0;
@@ -843,7 +788,8 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
                (resistancePerUnitLength * capacitancePerUnitLength);
       extension = round(lPrime);
       cout << "lPrime rounded = " << round(lPrime) << endl;
-      cout << "L from " << lengthOfWire << " to " << extension + lengthOfWire << endl;
+      cout << "L from " << lengthOfWire << " to " << extension + lengthOfWire
+           << endl;
       vector<Point> points = findPoints(x1, y1, extension + lengthOfWire);
       cout << endl;
       cout << "Unique points satisfying the equation are:\n";
@@ -872,70 +818,129 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       if (!solutions.empty()) {
         cout << "Lowest value in solutions: (" << solutions.front().x << ", "
              << solutions.front().y << ")\n";
-      }
 
-      findLCA(root, id1, id2)->x = solutions.front().x;
-      findLCA(root, id1, id2)->y = solutions.front().y;
-       findLCA(root, id1, id2)->z = node1->z;
+        parent->x = solutions.front().x;
+        parent->y = solutions.front().y;
+        parent->z = node1->z;
+      }
     }
     cout << endl;
     return lPrime;
   }
 }
 
-// Helper function to check if a node has a physical location
-bool hasPhysicalLocation(const Node *node) {
-  return node != nullptr && !(node->x == -1 && node->y == -1 && node->z == -1);
-}
-
-// Main recursive function to perform zero skew merging
+// // Main recursive function to perform zero skew merging
 Node *zeroSkewTree(Node *root) {
   if (!root || (root->leftChild == nullptr && root->rightChild == nullptr)) {
-    // Leaf node or empty subtree, no merging required
     return root;
   }
 
-  // First, process the subtrees
   root->leftChild = zeroSkewTree(root->leftChild);
   root->rightChild = zeroSkewTree(root->rightChild);
 
-  // Check if both children have physical locations
   if (hasPhysicalLocation(root->leftChild) &&
       hasPhysicalLocation(root->rightChild)) {
-
     ZeroSkewMerge(root, root->leftChild->id, root->rightChild->id);
+    ZeroSkewMerges++;
+    cout << "Merged At: (" << root->x << ", " << root->y << ")" << endl;
+    cout << "ZeroSkewMerges: " << ZeroSkewMerges << endl;
   }
-  ZeroSkewMerges++;
-  cout << "ZeroSkewMerges: " << ZeroSkewMerges << endl;
   return root;
 }
 
+// Function to parse input from a file
+void parseInput(const string &filename) {
+  ifstream inputFile(filename);
+  if (!inputFile.is_open()) {
+    cerr << "Error opening file!" << endl;
+    exit(1); // Exit if file cannot be opened
+  }
+  // Parse input file
+  inputFile >> layout.width >> layout.height >> layout.numDies;
+  inputFile.ignore(numeric_limits<streamsize>::max(),
+                   '\n'); // Ignore the rest of the line
+  inputFile >> wireUnits.resistance >> wireUnits.capacitance;
+  inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
+  inputFile >> bufferUnits.outputResistance >> bufferUnits.inputCapacitance >>
+      bufferUnits.intrinsicDelay;
+  inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
+  inputFile >> tsvUnits.resistance >> tsvUnits.capacitance;
+  inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
+  inputFile >> clockSource.x >> clockSource.y >> clockSource.z >>
+      clockSource.outputResistance;
+  inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
+  inputFile >> numSinks;
+  inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
+  for (int i = 0; i < numSinks; ++i) {
+    Sink sink;
+    inputFile >> sink.x >> sink.y >> sink.z >> sink.inputCapacitance;
+    sinks.push_back(sink);
+    inputFile.ignore(numeric_limits<streamsize>::max(), '\n');
+  }
+  inputFile.close();
+}
+
+void displayParsedData() {
+  cout << "Layout Area: (" << layout.width << "," << layout.height
+       << ")(x,y)(um)" << endl;
+  cout << "Number Of Dies: " << layout.numDies << endl;
+  cout << "Unit Wire Resistance: " << wireUnits.resistance << "(ohm/um)"
+       << endl;
+  cout << "Unit Wire Capacitance: " << wireUnits.capacitance << "(fF/um)"
+       << endl;
+  cout << "Buffer Output Resistance(ohm): " << bufferUnits.outputResistance
+       << endl;
+  cout << "Buffer Input Capacitance(fF): " << bufferUnits.inputCapacitance
+       << endl;
+  cout << "Buffer Intrinsic Delay(ps): " << bufferUnits.intrinsicDelay << endl;
+  cout << "TSV Resistance(ohm): " << tsvUnits.resistance << endl;
+  cout << "TSV Capacitance(fF): " << tsvUnits.capacitance << endl;
+  cout << "Clock Source: (" << clockSource.x << "," << clockSource.y << ","
+       << clockSource.z << ")(x,y,z) " << endl;
+  cout << "Clock Output resistance(ohm): " << clockSource.outputResistance
+       << endl;
+  cout << endl;
+  cout << "Sinks:" << endl;
+  for (const auto &sink : sinks) {
+    cout << "(" << sink.x << "," << sink.y << "," << sink.z
+         << ")(x,y,z), Input Capacitance - " << sink.inputCapacitance << " fF"
+         << endl;
+  }
+  cout << endl;
+  cout << "Median of x coordinates: " << calculateMedianX(sinks) << endl;
+  cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
+}
 int main() {
   int bound = 10;
-  parseInput("benchmark5.txt");
+  parseInput("benchmark6.txt");
   displayParsedData();
   // New block to separate sinks by their z-coordinate
   map<int, vector<Sink>> sinksByZ;
   for (const auto &sink : sinks) {
     sinksByZ[sink.z].push_back(sink);
   }
-  vector<Node *> roots; // To store the root of each subtrees created per z-coordinate
+  vector<Node *>
+      roots; // To store the root of each subtrees created per z-coordinate
   for (const auto &pair : sinksByZ) {
     int z = pair.first;
     const auto &sinksGroup = pair.second;
+    // For each z-coordinate, generate the tree and then perform zero skew tree
     Node *root = AbsTreeGen3D(sinksGroup, bound);
-
-    // Creating a new root node with the x and y coordinates from the clock source and z from the current tier
-    Node *newRoot = new Node({}, "Gray", 0.0, 0.0, false, nodeID++, clockSource.x, clockSource.y, z);
-    newRoot->rightChild = root; // Attach the generated tree as the left child of the new root
-    assignPhysicalLocations(newRoot);
-    hierarchicalDelay(newRoot);
+    root->z = z; // Assign the z coordinate of the sink group to the root node
+    assignPhysicalLocations(root);
+    hierarchicalDelay(root);
+    // cout<<getNodeDelay(root, 0)<<endl;
+    // cout<<getNodeDelay(root, 1)<<endl;
+    // cout<<getNodeDelay(root, 2)<<endl;
+    //  colorTree(root, dieColors, clockSource);
     cout << "\nProcessing z-coordinate: " << z << endl;
-    roots.push_back(zeroSkewTree(newRoot)); // Apply zero skew tree operation and store the root
+    roots.push_back(zeroSkewTree(
+        root)); // Apply zero skew tree operation and store the root
   }
+
   for (auto root : roots) {
     cout << "\nZero Skew Tree for tier: " << root->z << endl;
-    cout<<endl;
+    cout << endl;
     printTree(root);
     deleteTree(root); // Clean up each subtree
   }
