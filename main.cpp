@@ -910,9 +910,54 @@ void displayParsedData() {
   cout << "Median of x coordinates: " << calculateMedianX(sinks) << endl;
   cout << "Median of y coordinates: " << calculateMedianY(sinks) << endl;
 }
+
+// Structure to store a point
+struct Point2D {
+  double x, y;
+  Point2D(double x = 0, double y = 0) : x(x), y(y) {}
+};
+
+void exportNode(Node *node, ofstream &file) {
+  if (!node) {
+    return;
+  }
+  // Export the current node (point)
+  file << "P " << node->x << " " << node->y << std::endl;
+  // Export the line to the left child
+  if (node->leftChild) {
+    file << "L " << node->x << " " << node->y << " " << node->leftChild->x
+         << " " << node->leftChild->y << std::endl;
+    exportNode(node->leftChild, file);
+  }
+  // Export the line to the right child
+  if (node->rightChild) {
+    file << "L " << node->x << " " << node->y << " " << node->rightChild->x
+         << " " << node->rightChild->y << std::endl;
+    exportNode(node->rightChild, file);
+  }
+}
+
+void exportPointsAndLines(Node *root, const std::string &filename) {
+  std::ofstream file(filename);
+  if (!file.is_open()) {
+    std::cerr << "Error opening file for writing: " << filename << std::endl;
+    return;
+  }
+  exportNode(root, file);
+  file.close();
+}
+
+Node *createClockSourceNode() {
+  Node *clockNode = new Node({}, "ClockSource", 0.0, 0.0, false, nodeID++);
+  clockNode->x = clockSource.x;
+  clockNode->y = clockSource.y;
+  clockNode->z = clockSource.z;
+  return clockNode;
+}
+
 int main() {
   int bound = 10;
-  parseInput("benchmark6.txt");
+  parseInput("benchmark7.txt");
   displayParsedData();
   // New block to separate sinks by their z-coordinate
   map<int, vector<Sink>> sinksByZ;
@@ -929,6 +974,8 @@ int main() {
     root->z = z; // Assign the z coordinate of the sink group to the root node
     assignPhysicalLocations(root);
     hierarchicalDelay(root);
+    exportPointsAndLines(root, "tree_z_" + to_string(z) +
+                                   ".txt"); // Export to Points and Lines fil
     // cout<<getNodeDelay(root, 0)<<endl;
     // cout<<getNodeDelay(root, 1)<<endl;
     // cout<<getNodeDelay(root, 2)<<endl;
@@ -936,6 +983,12 @@ int main() {
     cout << "\nProcessing z-coordinate: " << z << endl;
     roots.push_back(zeroSkewTree(
         root)); // Apply zero skew tree operation and store the root
+  }
+
+  for (const auto &root : roots) {
+    exportPointsAndLines(
+        root, "zeroskew_points_and_lines_z_" + to_string(root->z) +
+                  ".txt"); // Export ZeroSkewTree to Points and Lines file
   }
 
   for (auto root : roots) {
