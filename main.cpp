@@ -11,8 +11,7 @@
 - Split into header files
 - Account for Vertical wirelength
 - Delay buffering instead of wire elongation (if wire is elongated more
-than 1.5x original legnth)
-- Make sure code considers downstream delay
+than 1.5x original length)
 */
 using namespace std;
 
@@ -589,6 +588,100 @@ double getNodeDelay(Node *node, int id) {
   return getNodeDelay(node->rightChild, id);
 }
 
+double distance(const Point& a, const Point& b) {
+  return std::abs(a.x - b.x) + std::abs(a.y - b.y);
+}
+
+double radius(const std::vector<Point>& sinks) {
+    double max_dist = 0;
+    for (size_t i = 0; i < sinks.size(); ++i) {
+        for (size_t j = i + 1; j < sinks.size(); ++j) {
+            max_dist = std::max(max_dist, distance(sinks[i], sinks[j]));
+        }
+    }
+    return max_dist / 2;
+}
+
+Point center(const std::vector<Point>& sinks, double r) {
+    double x_sum = 0, y_sum = 0;
+    for (const auto& sink : sinks) {
+        x_sum += sink.x;
+        y_sum += sink.y;
+    }
+    return {x_sum / sinks.size(), y_sum / sinks.size()};
+}
+
+void print_points(const std::string& label, const std::vector<Point>& points) {
+    std::cout << label << ": ";
+    for (const auto& point : points) {
+        std::cout << "(" << point.x << ", " << point.y << ") ";
+    }
+    std::cout << std::endl;
+}
+
+void linear_planar_dme_sub(std::vector<Point>& S_prime, const Point& P_S_prime, std::vector<Point>& tree_points) {
+    if (S_prime.size() == 1) return;
+    //cout<<"DME SUB"<<endl;
+    double r_prime = radius(S_prime);
+    Point ms_v = center(S_prime, r_prime);
+    // Add node v at ms_v to the tree
+    tree_points.push_back(ms_v);
+    // Divide S' into S1' and S2'
+    std::vector<Point> S1_prime, S2_prime;
+    for (auto& sink : S_prime) {
+      if (sink.x <= ms_v.x) {
+        S1_prime.push_back(sink);
+      } else if (sink.x > ms_v.x) {
+        S2_prime.push_back(sink);
+      }
+    }
+
+  // Attempt split by y-coordinate if x-coordinate doesn't work
+    if (S1_prime.empty() || S2_prime.empty()) {
+      S1_prime.clear();
+      S2_prime.clear();
+      for (auto& sink : S_prime) {
+        if (sink.y < ms_v.y) {
+          S1_prime.push_back(sink);
+        } else if (sink.y > ms_v.y) {
+          S2_prime.push_back(sink);
+        }
+      }
+    }
+    print_points("DME Sinks S'", S_prime);
+    print_points("DME Sinks S1'", S1_prime);
+    print_points("DME Sinks S2'", S2_prime);
+    cout << "DME Merging point: (" << ms_v.x << ", " << ms_v.y << ")" << endl;
+    // Recursive calls
+    linear_planar_dme_sub(S1_prime, ms_v, tree_points);
+    linear_planar_dme_sub(S2_prime, ms_v, tree_points);
+}
+
+void linear_planar_dme(std::vector<Point>& sinks, const Point& clk_location = {-1, -1} ) {
+    double r = radius(sinks);
+    cout<<" "<<endl;
+    // Build Manhattan Disks
+    Point c_S = center(sinks, r);
+    // Print the input sinks
+    std::cout << "DME Input Sinks:" << std::endl;
+    for (const auto& sink : sinks) {
+        std::cout << "(" << sink.x << ", " << sink.y << ")" << std::endl;
+    }
+    cout<<" "<<endl;
+    // Container for tree points
+    std::vector<Point> tree_points;
+
+    // Use clock location or center of sinks as starting point
+    Point start_point = clk_location.x == -1 && clk_location.y == -1 ? c_S : clk_location;
+
+    tree_points.push_back(start_point);
+
+    // Recursive DME Sub
+    linear_planar_dme_sub(sinks, c_S, tree_points);
+
+    // Output cost: sum of edge lengths (can be implemented as needed)
+}
+
 Node *findLCA(Node *root, int node1ID, int node2ID) {
   if (root == nullptr || root->id == node1ID || root->id == node2ID) {
     return root;
@@ -614,8 +707,8 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       getNodeDelay(root, parent->id) - getNodeDelay(root, id1);
   double delaySegment2 =
       getNodeDelay(root, parent->id) - getNodeDelay(root, id2);
-  cout << delaySegment1 << endl;
-  cout << delaySegment2 << endl;
+  //cout << delaySegment1 << endl;
+  //cout << delaySegment2 << endl;
   double capacitanceSegment1 = getNodeCapacitance(root, id1);
   cout << "CapSeg1: " << capacitanceSegment1 << endl;
   double capacitanceSegment2 = getNodeCapacitance(root, id2);
@@ -687,39 +780,42 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     for (const Point &point : solutions2) {
       cout << "(" << point.x << ", " << point.y << ")\n";
     }
+    /*
     // Sort the solutions1 vector based on x and y coordinates
     sort(solutions1.begin(), solutions1.end(),
-         [](const Point &a, const Point &b) {
-           if (a.x == b.x)
-             return a.y < b.y;
-           return a.x < b.x;
-         });
-    cout << endl;
+         [](const Point &a, const Point &b) { //replace with dme 
+           if (a.x == b.x) //replace with dme 
+             return a.y < b.y; //replace with dme 
+           return a.x < b.x; //replace with dme 
+         }); 
+    cout << endl; //replace with dme 
     // Return the lowest value from the sorted solutions2
-    if (!solutions1.empty()) {
-      cout << "Lowest value in solutions1: (" << solutions1.front().x << ", "
-           << solutions1.front().y << ")\n";
-    }
+    if (!solutions1.empty()) { //replace with dme 
+      cout << "Lowest value in solutions1: (" << solutions1.front().x << ", " //replace with dme 
+           << solutions1.front().y << ")\n"; //replace with dme 
+    } //replace with dme 
 
     // Sort the solutions2 vector based on x and y coordinates
     sort(solutions2.begin(), solutions2.end(),
-         [](const Point &a, const Point &b) {
-           if (a.x == b.x)
-             return a.y < b.y;
-           return a.x < b.x;
-         });
+         [](const Point &a, const Point &b) { //replace with dme 
+           if (a.x == b.x) //replace with dme 
+             return a.y < b.y; //replace with dme 
+           return a.x < b.x; //replace with dme 
+         }); //replace with dme 
 
     // Return the lowest value from the sorted solutions2
-    if (!solutions2.empty()) {
-      cout << "Lowest value in solutions2: (" << solutions2.front().x << ", "
-           << solutions2.front().y << ")\n";
-    }
+    if (!solutions2.empty()) { //replace with dme 
+      cout << "Lowest value in solutions2: (" << solutions2.front().x << ", "  //replace with dme 
+           << solutions2.front().y << ")\n"; //replace with dme 
+    } //replace with dme 
     // cout<<findLCA(root,id1,id2)->id<<endl;
-    if (!solutions1.empty() && !solutions2.empty()) {
-      parent->x = (solutions1.front().x + solutions2.front().x) / 2;
-      parent->y = (solutions1.front().y + solutions2.front().y) / 2;
-      parent->z = node1->z;
-    }
+    if (!solutions1.empty() && !solutions2.empty()) { //replace with dme 
+      parent->x = (solutions1.front().x + solutions2.front().x) / 2; //replace with dme 
+      parent->y = (solutions1.front().y + solutions2.front().y) / 2; //replace with dme 
+      parent->z = node1->z; //replace with dme 
+    } //replace with dme */
+    linear_planar_dme(solutions1);
+    linear_planar_dme(solutions2);
     cout << endl;
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
@@ -757,23 +853,24 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       for (const Point &point : solutions) {
         cout << "(" << point.x << ", " << point.y << ")\n";
       }
-
+      /*
       sort(solutions.begin(), solutions.end(),
-           [](const Point &a, const Point &b) {
-             if (a.x == b.x)
-               return a.y < b.y;
-             return a.x < b.x;
-           });
+           [](const Point &a, const Point &b) { //replace with dme 
+             if (a.x == b.x) //replace with dme 
+               return a.y < b.y; //replace with dme 
+             return a.x < b.x; //replace with dme 
+           }); //replace with dme 
       cout << endl;
       // Return the lowest value from the sorted solutions
-      if (!solutions.empty()) {
-        cout << "Lowest value in solutions: (" << solutions.front().x << ", "
-             << solutions.front().y << ")\n";
+      if (!solutions.empty()) { //replace with dme 
+        cout << "Lowest value in solutions: (" << solutions.front().x << ", " 
+             << solutions.front().y << ")\n"; //replace with dme 
 
-        parent->x = solutions.front().x;
-        parent->y = solutions.front().y;
-        parent->z = node1->z;
-      }
+        parent->x = solutions.front().x; //replace with dme 
+        parent->y = solutions.front().y; //replace with dme 
+        parent->z = node1->z; //replace with dme 
+      } //replace with dme  */
+      linear_planar_dme(solutions);
     } else {
       // vector<Point> solutions;
       double lPrime = 0;
@@ -806,23 +903,26 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       for (const Point &point : solutions) {
         cout << "(" << point.x << ", " << point.y << ")\n";
       }
+      
+      linear_planar_dme(solutions);
 
+      /*
       sort(solutions.begin(), solutions.end(),
-           [](const Point &a, const Point &b) {
-             if (a.x == b.x)
-               return a.y < b.y;
-             return a.x < b.x;
+           [](const Point &a, const Point &b) { //replace with dme 
+             if (a.x == b.x) //replace with dme 
+               return a.y < b.y; //replace with dme 
+             return a.x < b.x; //replace with dme 
            });
       cout << endl;
       // Return the lowest value from the sorted solutions
-      if (!solutions.empty()) {
+      if (!solutions.empty()) { //replace with dme 
         cout << "Lowest value in solutions: (" << solutions.front().x << ", "
-             << solutions.front().y << ")\n";
+             << solutions.front().y << ")\n"; //replace with dme 
 
-        parent->x = solutions.front().x;
-        parent->y = solutions.front().y;
-        parent->z = node1->z;
-      }
+        parent->x = solutions.front().x; //replace with dme 
+        parent->y = solutions.front().y; //replace with dme 
+        parent->z = node1->z; //replace with dme 
+      } */
     }
     cout << endl;
     return lPrime;
@@ -954,6 +1054,8 @@ Node *createClockSourceNode() {
   clockNode->z = clockSource.z;
   return clockNode;
 }
+
+
 
 int main() {
   int bound = 10;
