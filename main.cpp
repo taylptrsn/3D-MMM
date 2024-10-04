@@ -628,6 +628,23 @@ void linear_planar_dme_sub(std::vector<Point>& S_prime, const Point& P_S_prime, 
     tree_points.push_back(ms_v);
     // Divide S' into S1' and S2'
     std::vector<Point> S1_prime, S2_prime;
+
+    bool identicalPoints = true;  // Flag to detect identical points condition
+    // Detect if all points are identical
+    Point firstSink = S_prime.front();
+    for (const auto& sink : S_prime) {
+      if (sink.x != firstSink.x || sink.y != firstSink.y) {
+        identicalPoints = false;
+        break;
+      }
+    }
+
+    if (identicalPoints) {
+      // Handle identical points by creating two arbitrary groups
+      // Arbitrarily choose the half for the partitioning
+      S1_prime.assign(S_prime.begin(), S_prime.begin() + S_prime.size() / 2);
+      S2_prime.assign(S_prime.begin() + S_prime.size() / 2, S_prime.end());
+    } else {
     for (auto& sink : S_prime) {
       if (sink.x <= ms_v.x) {
         S1_prime.push_back(sink);
@@ -641,12 +658,13 @@ void linear_planar_dme_sub(std::vector<Point>& S_prime, const Point& P_S_prime, 
       S1_prime.clear();
       S2_prime.clear();
       for (auto& sink : S_prime) {
-        if (sink.y < ms_v.y) {
+        if (sink.y <= ms_v.y) {
           S1_prime.push_back(sink);
         } else if (sink.y > ms_v.y) {
           S2_prime.push_back(sink);
         }
       }
+    }
     }
     print_points("DME Sinks S'", S_prime);
     print_points("DME Sinks S1'", S1_prime);
@@ -780,6 +798,16 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     for (const Point &point : solutions2) {
       cout << "(" << point.x << ", " << point.y << ")\n";
     }
+
+    //test
+    std::vector<Point> solutions(solutions1.begin(), solutions1.end());
+
+    // Append elements from the second vector to the new vector
+    solutions.insert(solutions.end(), solutions2.begin(),solutions2.end());
+    // Print the combined vector
+    //for (const Point &point : combined_vector) {
+    //  cout << "comb(" << point.x << ", " << point.y << ")\n";
+    //}
     /*
     // Sort the solutions1 vector based on x and y coordinates
     sort(solutions1.begin(), solutions1.end(),
@@ -814,8 +842,11 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       parent->y = (solutions1.front().y + solutions2.front().y) / 2; //replace with dme 
       parent->z = node1->z; //replace with dme 
     } //replace with dme */
-    linear_planar_dme(solutions1);
-    linear_planar_dme(solutions2);
+    //linear_planar_dme(solutions1);
+    //linear_planar_dme(solutions2);
+    //cout<<"combined dme";
+    cout<<endl;
+    linear_planar_dme(solutions);
     cout << endl;
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
