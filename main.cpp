@@ -449,6 +449,48 @@ Node *findNodeById(Node *node, int id) {
                       id); // Could return nullptr if not found
 }
 
+// Function to search for a node by its children's coordinates with verbose output
+Node* findNodeByChildren(Node* root, int childX, int childY) {
+    if (root == nullptr) {
+        cout << "Reached a null node. Returning nullptr." << endl;
+        return nullptr;
+    }
+
+    cout << "Visiting Node ID: " << root->id << " with coordinates (" << root->x << ", " << root->y << ", " << root->z << ")" << endl;
+
+    // Check left child
+    if (root->leftChild != nullptr) {
+        cout << "Checking left child of Node ID: " << root->id << endl;
+        if (root->leftChild->x == childX && root->leftChild->y == childY) {
+            cout << "Match found in left child of Node ID: " << root->id << endl;
+            return root;
+        }
+    } else {
+        cout << "No left child for Node ID: " << root->id << endl;
+    }
+
+    // Check right child
+    if (root->rightChild != nullptr) {
+        cout << "Checking right child of Node ID: " << root->id << endl;
+        if (root->rightChild->x == childX && root->rightChild->y == childY) {
+            cout << "Match found in right child of Node ID: " << root->id << endl;
+            return root;
+        }
+    } else {
+        cout << "No right child for Node ID: " << root->id << endl;
+    }
+
+    // Recursively search in the left subtree
+    cout << "Recursively searching left subtree of Node ID: " << root->id << endl;
+    Node* foundNode = findNodeByChildren(root->leftChild, childX, childY);
+    if (foundNode != nullptr) {
+        return foundNode;
+    }
+
+    // Recursively search in the right subtree
+    cout << "Recursively searching right subtree of Node ID: " << root->id << endl;
+    return findNodeByChildren(root->rightChild, childX, childY);
+}
 // Function to calculate the Manhattan distance between two nodes by their IDs
 int calculateManhattanDistance(Node *root, int id1, int id2) {
   Node *node1 = findNodeById(root, id1);
@@ -675,7 +717,7 @@ void linear_planar_dme_sub(std::vector<Point>& S_prime, const Point& P_S_prime, 
     linear_planar_dme_sub(S2_prime, ms_v, tree_points);
 }
 
-void linear_planar_dme(std::vector<Point>& sinks, const Point& clk_location = {-1, -1} ) {
+std::vector<Point> linear_planar_dme(std::vector<Point>& sinks, const Point& clk_location = {-1, -1} ) {
     double r = radius(sinks);
     cout<<" "<<endl;
     // Build Manhattan Disks
@@ -698,8 +740,9 @@ void linear_planar_dme(std::vector<Point>& sinks, const Point& clk_location = {-
     linear_planar_dme_sub(sinks, c_S, tree_points);
 
     // Output cost: sum of edge lengths (can be implemented as needed)
+    return tree_points;
 }
-
+//findNodeByChildren(root, 67, 30);
 Node *findLCA(Node *root, int node1ID, int node2ID) {
   if (root == nullptr || root->id == node1ID || root->id == node2ID) {
     return root;
@@ -732,7 +775,8 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
   double capacitanceSegment2 = getNodeCapacitance(root, id2);
   cout << "CapSeg2: " << capacitanceSegment2 << endl;
   int lengthOfWire = calculateManhattanDistance(root, id1, id2);
-
+  
+  
   cout << endl;
   double x1 = node1->x;
   double y1 = node1->y;
@@ -798,12 +842,12 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     for (const Point &point : solutions2) {
       cout << "(" << point.x << ", " << point.y << ")\n";
     }
-
+     
     //test
     std::vector<Point> solutions(solutions1.begin(), solutions1.end());
-
     // Append elements from the second vector to the new vector
     solutions.insert(solutions.end(), solutions2.begin(),solutions2.end());
+    
     // Print the combined vector
     //for (const Point &point : combined_vector) {
     //  cout << "comb(" << point.x << ", " << point.y << ")\n";
@@ -845,9 +889,30 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     //linear_planar_dme(solutions1);
     //linear_planar_dme(solutions2);
     //cout<<"combined dme";
-    cout<<endl;
-    linear_planar_dme(solutions);
-    cout << endl;
+    //cout<<endl;
+    //linear_planar_dme(solutions);
+    // Call linear_planar_dme and get the merging point
+    // Call linear_planar_dme and get all merging points
+    vector<Point> mergingPoints = linear_planar_dme(solutions);
+
+    // Find the parent node and its ancestors
+    Node* parent = findLCA(root, id1, id2);
+    vector<Node*> ancestors;
+    Node* current = parent;
+    while (current != nullptr) {
+        ancestors.push_back(current);
+        current = findLCA(root, current->id, root->id);
+        if (current == root) break;
+    }
+
+    // Assign merging points to parent and ancestors
+    for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
+        ancestors[i]->x = mergingPoints[i].x;
+        ancestors[i]->y = mergingPoints[i].y;
+        ancestors[i]->z = node1->z; // Assuming z-coordinate remains the same
+        cout << "Merged At: (" << ancestors[i]->x << ", " << ancestors[i]->y << ") for Node ID: " << ancestors[i]->id << endl;
+    }
+
     return mergingPointX *
            lengthOfWire; // length for sink 1 = l*x, length for sink 2 = l*(1-x)
 
@@ -901,7 +966,29 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
         parent->y = solutions.front().y; //replace with dme 
         parent->z = node1->z; //replace with dme 
       } //replace with dme  */
-      linear_planar_dme(solutions);
+      //linear_planar_dme(solutions);
+      // Call linear_planar_dme and get the merging point
+      // Call linear_planar_dme and get all merging points
+      vector<Point> mergingPoints = linear_planar_dme(solutions);
+
+      // Find the parent node and its ancestors
+      Node* parent = findLCA(root, id1, id2);
+      vector<Node*> ancestors;
+      Node* current = parent;
+      while (current != nullptr) {
+          ancestors.push_back(current);
+          current = findLCA(root, current->id, root->id);
+          if (current == root) break;
+      }
+
+      // Assign merging points to parent and ancestors
+      for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
+          ancestors[i]->x = mergingPoints[i].x;
+          ancestors[i]->y = mergingPoints[i].y;
+          ancestors[i]->z = node1->z; // Assuming z-coordinate remains the same
+          cout << "Merged At: (" << ancestors[i]->x << ", " << ancestors[i]->y << ") for Node ID: " << ancestors[i]->id << endl;
+      }
+
     } else {
       // vector<Point> solutions;
       double lPrime = 0;
@@ -935,7 +1022,28 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
         cout << "(" << point.x << ", " << point.y << ")\n";
       }
       
-      linear_planar_dme(solutions);
+      //linear_planar_dme(solutions);
+      // Call linear_planar_dme and get the merging point
+      // Call linear_planar_dme and get all merging points
+      vector<Point> mergingPoints = linear_planar_dme(solutions);
+
+      // Find the parent node and its ancestors
+      Node* parent = findLCA(root, id1, id2);
+      vector<Node*> ancestors;
+      Node* current = parent;
+      while (current != nullptr) {
+          ancestors.push_back(current);
+          current = findLCA(root, current->id, root->id);
+          if (current == root) break;
+      }
+
+      // Assign merging points to parent and ancestors
+      for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
+          ancestors[i]->x = mergingPoints[i].x;
+          ancestors[i]->y = mergingPoints[i].y;
+          ancestors[i]->z = node1->z; // Assuming z-coordinate remains the same
+          cout << "Merged At: (" << ancestors[i]->x << ", " << ancestors[i]->y << ") for Node ID: " << ancestors[i]->id << endl;
+      }
 
       /*
       sort(solutions.begin(), solutions.end(),
@@ -1087,7 +1195,6 @@ Node *createClockSourceNode() {
 }
 
 
-
 int main() {
   int bound = 10;
   parseInput("benchmark7.txt");
@@ -1116,9 +1223,12 @@ int main() {
     cout << "\nProcessing z-coordinate: " << z << endl;
     roots.push_back(zeroSkewTree(
         root)); // Apply zero skew tree operation and store the root
+    
   }
 
   for (const auto &root : roots) {
+
+    
     exportPointsAndLines(
         root, "zeroskew_points_and_lines_z_" + to_string(root->z) +
                   ".txt"); // Export ZeroSkewTree to Points and Lines file
