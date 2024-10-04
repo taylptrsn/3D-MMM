@@ -661,11 +661,21 @@ void print_points(const std::string& label, const std::vector<Point>& points) {
     std::cout << std::endl;
 }
 
+Point roundCoordinates(const Point& p) {
+    // Ensure one coordinate is rounded up and the other is rounded down
+    if (p.x - floor(p.x) >= 0.5) {
+        return {ceil(p.x), floor(p.y)};
+    } else {
+        return {floor(p.x), ceil(p.y)};
+    }
+}
+
 void linear_planar_dme_sub(std::vector<Point>& S_prime, const Point& P_S_prime, std::vector<Point>& tree_points) {
     if (S_prime.size() == 1) return;
     //cout<<"DME SUB"<<endl;
     double r_prime = radius(S_prime);
     Point ms_v = center(S_prime, r_prime);
+    ms_v = roundCoordinates(ms_v);
     // Add node v at ms_v to the tree
     tree_points.push_back(ms_v);
     // Divide S' into S1' and S2'
@@ -734,11 +744,15 @@ std::vector<Point> linear_planar_dme(std::vector<Point>& sinks, const Point& clk
     // Use clock location or center of sinks as starting point
     Point start_point = clk_location.x == -1 && clk_location.y == -1 ? c_S : clk_location;
 
-    tree_points.push_back(start_point);
-
+    //tree_points.push_back(start_point);
+    tree_points.push_back(roundCoordinates(start_point));
     // Recursive DME Sub
     linear_planar_dme_sub(sinks, c_S, tree_points);
 
+    // Round all points in tree_points
+    for (auto& point : tree_points) {
+        point = roundCoordinates(point);
+    }
     // Output cost: sum of edge lengths (can be implemented as needed)
     return tree_points;
 }
@@ -907,9 +921,10 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
 
     // Assign merging points to parent and ancestors
     for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
-        ancestors[i]->x = mergingPoints[i].x;
-        ancestors[i]->y = mergingPoints[i].y;
-        ancestors[i]->z = node1->z; // Assuming z-coordinate remains the same
+      Point roundedPoint = roundCoordinates(mergingPoints[i]);
+      ancestors[i]->x = roundedPoint.x;
+      ancestors[i]->y = roundedPoint.y;
+      ancestors[i]->z = node1->z; // Assuming z-coordinate remains the same
         cout << "Merged At: (" << ancestors[i]->x << ", " << ancestors[i]->y << ") for Node ID: " << ancestors[i]->id << endl;
     }
 
@@ -983,9 +998,10 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
 
       // Assign merging points to parent and ancestors
       for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
-          ancestors[i]->x = mergingPoints[i].x;
-          ancestors[i]->y = mergingPoints[i].y;
-          ancestors[i]->z = node1->z; // Assuming z-coordinate remains the same
+        Point roundedPoint = roundCoordinates(mergingPoints[i]);
+        ancestors[i]->x = roundedPoint.x;
+        ancestors[i]->y = roundedPoint.y;
+        ancestors[i]->z = node1->z; // Assuming z-coordinate remains the same
           cout << "Merged At: (" << ancestors[i]->x << ", " << ancestors[i]->y << ") for Node ID: " << ancestors[i]->id << endl;
       }
 
@@ -1039,9 +1055,10 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
 
       // Assign merging points to parent and ancestors
       for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
-          ancestors[i]->x = mergingPoints[i].x;
-          ancestors[i]->y = mergingPoints[i].y;
-          ancestors[i]->z = node1->z; // Assuming z-coordinate remains the same
+        Point roundedPoint = roundCoordinates(mergingPoints[i]);
+        ancestors[i]->x = roundedPoint.x;
+        ancestors[i]->y = roundedPoint.y;
+        ancestors[i]->z = node1->z; // Assuming z-coordinate remains the same
           cout << "Merged At: (" << ancestors[i]->x << ", " << ancestors[i]->y << ") for Node ID: " << ancestors[i]->id << endl;
       }
 
