@@ -5,6 +5,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <chrono>
 #include <vector>
 /* TODO
 - Unit Conversion at Data read-in
@@ -838,9 +839,9 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     vector<Point> solutions1, solutions2;
     cout << "Valid solutions for point 1 are:\n";
     for (const Point &point : points1) {
-      if (point.x == x1 && point.x >= 0 && point.y >= 0) {
+      //if (point.x == x1 && point.x >= 0 && point.y >= 0) {
         solutions1.push_back(point);
-      }
+      //}
     }
     for (const Point &point : solutions1) {
       cout << "(" << point.x << ", " << point.y << ")\n";
@@ -1173,18 +1174,28 @@ struct Point2D {
   Point2D(double x = 0, double y = 0) : x(x), y(y) {}
 };
 
-void exportNode(Node *node, ofstream &file) {
+void exportNode(Node *node, std::ofstream &file) {
   if (!node) {
     return;
   }
-  // Export the current node (point)
-  file << "P " << node->x << " " << node->y << std::endl;
+  
+  // Check if the node is a leaf node
+  bool isLeaf = node->leftChild == nullptr && node->rightChild == nullptr;
+
+  // Export the current node (point) with special notation for leaf nodes
+  if (isLeaf) {
+    file << "P " << node->x << " " << node->y << " (Leaf Node)" << std::endl;
+  } else {
+    file << "P " << node->x << " " << node->y << std::endl;
+  }
+
   // Export the line to the left child
   if (node->leftChild) {
     file << "L " << node->x << " " << node->y << " " << node->leftChild->x
          << " " << node->leftChild->y << std::endl;
     exportNode(node->leftChild, file);
   }
+
   // Export the line to the right child
   if (node->rightChild) {
     file << "L " << node->x << " " << node->y << " " << node->rightChild->x
@@ -1213,6 +1224,7 @@ Node *createClockSourceNode() {
 
 
 int main() {
+  auto start = std::chrono::high_resolution_clock::now();
   int bound = 10;
   parseInput("benchmark7.txt");
   displayParsedData();
@@ -1257,5 +1269,11 @@ int main() {
     printTree(root);
     deleteTree(root); // Clean up each subtree
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  // Calculate the duration
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+  // Print the execution time
+  std::cout << "Execution time: " << duration.count() << " microseconds" << std::endl;
   return 0;
 }
