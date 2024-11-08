@@ -1781,7 +1781,7 @@ int main() {
   int idealSum = 0;
   int zsmSum = 0;
   int subtreeTotalSum = 0;
-  parseInput("benchmark11.txt");
+  parseInput("benchmark10.txt");
   displayParsedData();
   //Separate sinks by their z-coordinate
   map<int, vector<Sink>> sinksByZ;
