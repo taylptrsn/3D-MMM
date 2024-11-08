@@ -14,7 +14,7 @@
 - Unit Conversion at Data read-in
 - Split into header files
 - Check delay calculations
-- Find way to make sure MIV delay/cap from previous tier is not overwritte/is assigned correctly. 
+- Find way to make sure MIV delay/cap from previous tier is not overwritten/is assigned correctly. 
 */
 using namespace std;
 
