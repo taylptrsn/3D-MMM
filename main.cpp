@@ -75,7 +75,7 @@ struct Sink {
       : x(x), y(y), z(z), inputCapacitance(inputCapacitance), capacitance(capacitance), color(color),delay(delay),cluster_id(cluster_id),sink_type(sink_type) {}
 }; 
 
-struct Node {
+/*struct Node {
   int id;             // Added id field to store unique identifier for each node
   vector<Sink> sinks; // Contains multiple sinks, each with their own units
   Node *leftChild;
@@ -100,8 +100,33 @@ struct Node {
         color(color), capacitance(capacitance), resistance(resistance),
         isBuffered(isBuffered), x(x), y(y), z(z), node_type(node_type),
         cluster_id(cluster_id) {}
+}; */
+struct Node {
+  int id;             
+  vector<Sink> sinks; 
+  Node *leftChild;
+  Node *rightChild;
+  string color;
+  int dieIndex;       
+  double capacitance; 
+  double resistance;  
+  double elmoreDelay; 
+  bool isBuffered;    
+  int x, y, z;     
+  string node_type; 
+  int cluster_id;   
+  double bufferDelay; // New attribute for buffer-specific delay
+  Node(const vector<Sink> &sinks, string color = "Gray",
+       double capacitance = 0.0, double resistance = 0.0,
+       bool isBuffered = false, int id = 0, int x = -1, int y = -1, int z = -1,
+       string node_type = "undefined",
+       int cluster_id = -1,
+       double bufferDelay = 0.0) // Added bufferDelay parameter with default value
+      : id(id), sinks(sinks), leftChild(nullptr), rightChild(nullptr),
+        color(color), capacitance(capacitance), resistance(resistance),
+        isBuffered(isBuffered), x(x), y(y), z(z), node_type(node_type),
+        cluster_id(cluster_id), bufferDelay(bufferDelay) {}
 };
-
 // Global Variables
 Layout layout;
 WireUnits wireUnits;
@@ -650,6 +675,7 @@ void hierarchicalDelay(Node *node) {
   depthFirstCapacitance(node);
   depthFirstDelay(node, clockSource.outputResistance);
 }
+
 double getNodeCapacitance(Node *node, int id) {
   if (node == nullptr) {
     return -1.0;
@@ -956,7 +982,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
   double capacitanceSegment2 = getNodeCapacitance(root, id2);
   cout << "CapSeg2: " << capacitanceSegment2 << endl;
   int lengthOfWire = calculateManhattanDistance(root, id1, id2);
-
+  double delayDifference = abs(delaySegment1 - delaySegment2);
 
   cout << endl;
   double x1 = node1->x;
@@ -1070,6 +1096,49 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
                 resistancePerUnitLength * capacitanceSegment1) /
                (resistancePerUnitLength * capacitancePerUnitLength);
       extension = round(lPrime);
+
+
+      /*double totalLength = lengthOfWire + extension;
+      // Check if buffer is needed (1.5x threshold)
+      if (totalLength > (lengthOfWire * 1.5)) {
+          cout << "Adding buffer at merging point due to extended length: " 
+      << totalLength << " (original: " << lengthOfWire << ")" << endl;
+          // Update parent node to include buffer
+          parent->isBuffered = true;
+          parent->resistance = bufferUnits.outputResistance;
+          parent->capacitance = bufferUnits.inputCapacitance;
+          // Add buffer delay to the path
+          parent->elmoreDelay += bufferUnits.intrinsicDelay;
+          // Recalculate delays considering buffer
+          delaySegment1 = getNodeDelay(root, parent->id);
+          delaySegment2 = getNodeDelay(root, parent->id);
+          extension=0;
+          lPrime=lengthOfWire;
+          cout << "Buffer inserted, length will not be extended" << endl;
+      } */
+      
+      double totalLength = lengthOfWire + extension;
+      // Check if buffer is needed (1.5x threshold)
+      if (totalLength > (lengthOfWire * 1.5)) {
+          cout << "Adding buffer at merging point due to extended length: " 
+      << totalLength << " (original: " << lengthOfWire << ")" << endl;
+
+          // Calculate required buffer delay to equalize delays
+          double requiredBufferDelay = delayDifference;
+          // Update parent node to include buffer
+          //parent->isBuffered = true;
+          parent->bufferDelay = requiredBufferDelay;
+          parent->resistance = bufferUnits.outputResistance;
+          //parent->capacitance = bufferUnits.inputCapacitance;
+          // Add buffer delay to the path
+          //parent->elmoreDelay += bufferUnits.intrinsicDelay;
+          // Recalculate delays considering buffer
+          //delaySegment1 = getNodeDelay(root, parent->id);
+          //delaySegment2 = getNodeDelay(root, parent->id);
+          extension=0;
+          lPrime=lengthOfWire;
+          cout << "Buffer with delay " << requiredBufferDelay <<"fs inserted at merging point, length will not be extended" << endl;
+      } 
       cout << "lPrime rounded = " << round(lPrime) << endl;
       cout << "Extending L from " << lengthOfWire << " to "
            << extension + lengthOfWire << endl;
@@ -1127,6 +1196,48 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
                 resistancePerUnitLength * capacitanceSegment2) /
                (resistancePerUnitLength * capacitancePerUnitLength);
       extension = round(lPrime);
+
+      /*double totalLength = lengthOfWire + extension;
+      // Check if buffer is needed (1.5x threshold)
+      if (totalLength > (lengthOfWire * 1.5)) {
+          cout << "Adding buffer at merging point due to extended length: " 
+      << totalLength << " (original: " << lengthOfWire << ")" << endl;
+          // Update parent node to include buffer
+          parent->isBuffered = true;
+          parent->resistance = bufferUnits.outputResistance;
+          parent->capacitance = bufferUnits.inputCapacitance;
+          // Add buffer delay to the path
+          parent->elmoreDelay += bufferUnits.intrinsicDelay;
+          // Recalculate delays considering buffer
+          delaySegment1 = getNodeDelay(root, parent->id);
+          delaySegment2 = getNodeDelay(root, parent->id);
+          extension=0;
+          lPrime=lengthOfWire;
+          cout << "Buffer inserted, length will not be extended" << endl;
+      } */
+
+      double totalLength = lengthOfWire + extension;
+      // Check if buffer is needed (1.5x threshold)
+      if (totalLength > (lengthOfWire * 1.5)) {
+          cout << "Adding buffer at merging point due to extended length: " 
+      << totalLength << " (original: " << lengthOfWire << ")" << endl;
+
+          // Calculate required buffer delay to equalize delays
+          double requiredBufferDelay = delayDifference;
+          // Update parent node to include buffer
+          //parent->isBuffered = true;
+          parent->bufferDelay = requiredBufferDelay;
+          parent->resistance = bufferUnits.outputResistance;
+          //parent->capacitance = bufferUnits.inputCapacitance;
+          // Add buffer delay to the path
+          parent->elmoreDelay += bufferUnits.intrinsicDelay;
+          // Recalculate delays considering buffer
+          //delaySegment1 = getNodeDelay(root, parent->id);
+          //delaySegment2 = getNodeDelay(root, parent->id);
+          extension=0;
+          lPrime=lengthOfWire;
+          cout << "Buffer with delay " << requiredBufferDelay <<"fs inserted at merging point, length will not be extended" << endl;
+      } 
       cout << "lPrime rounded = " << round(lPrime) << endl;
       cout << "L from " << lengthOfWire << " to " << extension + lengthOfWire
            << endl;
