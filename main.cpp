@@ -18,8 +18,10 @@
       to node) WIP
 - Unit Conversion at Data read-in
 - Split into header files
+- Account for Vertical wirelength
+
 - Check delay calculations
-- Find way to make sure MIV delay/cap from previous tier is not overwritten/is assigned correctly. 
+- Find way to make sure MIV delay/cap from previous tier is not overwritte/is assigned correctly. 
 */
 using namespace std;
 
@@ -1836,6 +1838,7 @@ int main() {
       std::cout << "***********************************" << std::endl;
       assignPhysicalLocations(AbstractSubtree);
       assignClusterIdToTree(AbstractSubtree, subtreeRoot->cluster_id);
+      depthFirstCapacitance(AbstractSubtree);
       Node *zeroSkewSubtree = zeroSkewTree(AbstractSubtree);
       zeroSkewSubtree->node_type = "MIV";
       depthFirstCapacitance(zeroSkewSubtree);
@@ -1844,10 +1847,10 @@ int main() {
       Sink rootSink;
       rootSink.x = zeroSkewSubtree->x;
       rootSink.y = zeroSkewSubtree->y;
-      rootSink.z = z;  // current tier
-      rootSink.delay = zeroSkewSubtree->elmoreDelay;  // store the delay
-      rootSink.cluster_id = zeroSkewSubtree->cluster_id;  // if you need to track cluster
-      rootSink.sink_type = "MIV";  // if you need to track cluster
+      rootSink.z = z;  
+      rootSink.delay = zeroSkewSubtree->elmoreDelay; 
+      rootSink.cluster_id = zeroSkewSubtree->cluster_id; 
+      rootSink.sink_type = "MIV"; 
       tierMIVSinks[z].push_back(rootSink);
       printTree(zeroSkewSubtree);
 
@@ -1878,8 +1881,6 @@ int main() {
     cout << "~~~Zero Skew Tree Wirelength for z = " << z << ": "
          << zsmWireLength << endl;
     deleteTree(root);  // Clean up after exporting (Might not be right)
-    //roots.push_back(zeroSkewTree(root)); // Apply zero skew tree operation
-    // and store the root
   }
   // To print/access the information:
   for (const auto& pair : tierMIVSinks) {
@@ -1891,7 +1892,7 @@ int main() {
       }
   }
   auto end = std::chrono::high_resolution_clock::now();
-  // Calculate the duration
+  // Calculate runtime
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   // Cout to logfile
