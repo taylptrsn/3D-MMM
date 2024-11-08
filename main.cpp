@@ -11,15 +11,9 @@
 #include <vector>
 
 /* TODO
-- Add validity check for merging point solutions (within Die area bound) WIP
-      - Must do buffering first, or validity check will cause infinite loops in certain edge cases
-      - Delay buffering instead of wire elongation (if wire is elongated more
-      than 1.5x original length insert a multiple of the buffer, add buffer attribute
-      to node) WIP
 - Unit Conversion at Data read-in
 - Split into header files
 - Account for Vertical wirelength
-
 - Check delay calculations
 - Find way to make sure MIV delay/cap from previous tier is not overwritte/is assigned correctly. 
 */
