@@ -18,8 +18,6 @@
       to node) WIP
 - Unit Conversion at Data read-in
 - Split into header files
-- Account for Vertical wirelength
-
 - Check delay calculations
 - Find way to make sure MIV delay/cap from previous tier is not overwritten/is assigned correctly. 
 */
