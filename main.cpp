@@ -11,9 +11,15 @@
 #include <vector>
 
 /* TODO
+- Add validity check for merging point solutions (within Die area bound) WIP
+      - Must do buffering first, or validity check will cause infinite loops in certain edge cases
+      - Delay buffering instead of wire elongation (if wire is elongated more
+      than 1.5x original length insert a multiple of the buffer, add buffer attribute
+      to node) WIP
 - Unit Conversion at Data read-in
 - Split into header files
 - Account for Vertical wirelength
+
 - Check delay calculations
 - Find way to make sure MIV delay/cap from previous tier is not overwritte/is assigned correctly. 
 */
@@ -109,13 +115,13 @@ struct Node {
   int x, y, z;     
   string node_type; 
   int cluster_id;   
-  double bufferDelay; // New attribute for buffer-specific delay
+  double bufferDelay; 
   Node(const vector<Sink> &sinks, string color = "Gray",
        double capacitance = 0.0, double resistance = 0.0,
        bool isBuffered = false, int id = 0, int x = -1, int y = -1, int z = -1,
        string node_type = "undefined",
        int cluster_id = -1,
-       double bufferDelay = 0.0) // Added bufferDelay parameter with default value
+       double bufferDelay = 0.0) 
       : id(id), sinks(sinks), leftChild(nullptr), rightChild(nullptr),
         color(color), capacitance(capacitance), resistance(resistance),
         isBuffered(isBuffered), x(x), y(y), z(z), node_type(node_type),
@@ -1864,7 +1870,56 @@ void cleanupPreviousFiles() {
   }
 }
 
+  
+  void calculateBottomUpDelay(Node* node) {
+    if (!node) return;
 
+    // Process children first
+    calculateBottomUpDelay(node->leftChild);
+    calculateBottomUpDelay(node->rightChild);
+
+    // For leaf nodes
+    if (!node->leftChild && !node->rightChild) {
+        // Start with clock source resistance for the first segment
+        double totalResistance = clockSource.outputResistance + node->resistance;
+        node->elmoreDelay = totalResistance * node->capacitance;
+
+        if (node->isBuffered) {
+            node->elmoreDelay += bufferUnits.intrinsicDelay;
+        }
+        return;
+    }
+
+    // For internal nodes
+    double maxChildDelay = 0.0;
+
+    // Calculate total downstream capacitance and find max child delay
+    double downstreamCap = node->capacitance;
+    if (node->leftChild) {
+        maxChildDelay = max(maxChildDelay, node->leftChild->elmoreDelay);
+        downstreamCap += node->leftChild->capacitance;
+    }
+    if (node->rightChild) {
+        maxChildDelay = max(maxChildDelay, node->rightChild->elmoreDelay);
+        downstreamCap += node->rightChild->capacitance;
+    }
+
+    // Calculate this node's delay contribution
+    double nodeDelay = node->resistance * downstreamCap;
+
+    // Total delay is max child delay plus this node's contribution
+    node->elmoreDelay = maxChildDelay + nodeDelay;
+
+    if (node->isBuffered) {
+        node->elmoreDelay += bufferUnits.intrinsicDelay;
+    }
+  }
+
+  void calculateBottomUpElmoreDelay(Node* node) {
+    if (!node) return;
+    depthFirstCapacitance(node);
+    calculateBottomUpDelay(node);
+  }
 int main() {
   
   cleanupPreviousFiles();
@@ -1884,7 +1939,7 @@ int main() {
   std::streambuf *coutBuf = std::cout.rdbuf();
   std::cout.rdbuf(logFile.rdbuf());
   //int testbound = 10;
-  int bound = 90; //Inserts Bound+1 MIVs per tier, Bound MIVs + 1 MIV for the unclustered sinks
+  int bound = 70; //Inserts Bound+1 MIVs per tier, Bound MIVs + 1 MIV for the unclustered sinks
   int idealSum = 0;
   int zsmSum = 0;
   int subtreeTotalSum = 0;
@@ -1919,12 +1974,10 @@ int main() {
     string tierFilename =
         "zeroskew_points_and_lines_z_" + to_string(z) + ".txt";
     assignPhysicalLocations(root);
-    //assignPhysicalCharacteristics(root);
-    //depthFirstCapacitance(root);
+    //assignPhysicalCharacteristics(root); WIP
     //Baseline case, eps = layout.width, minPts=1 or numSinks
     double eps = layout.width * .085; // Epsilon distance
     int minPts = 4;                    // Minimum points to form a cluster
-    //runDBSCANAndAssignClusters(root, eps, minPts);
     runDBSCANAndAssignClusters(root, eps, minPts, bound);
     clusterMidpoints = calculateClusterMidpoints(root);
     //  Create subtrees for each cluster
@@ -1947,7 +2000,9 @@ int main() {
       Node *zeroSkewSubtree = zeroSkewTree(AbstractSubtree);
       zeroSkewSubtree->node_type = "MIV";
       depthFirstCapacitance(zeroSkewSubtree);
-      depthFirstDelay(zeroSkewSubtree, tsvUnits.resistance);
+      depthFirstDelay(zeroSkewSubtree, tsvUnits.resistance); //WIP
+      //calculateBottomUpElmoreDelay(zeroSkewSubtree); WIP
+
       // Store the subtree information in map
       Sink rootSink;
       rootSink.x = zeroSkewSubtree->x;
