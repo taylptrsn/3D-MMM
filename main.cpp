@@ -11,14 +11,17 @@
 #include <vector>
 
 /* TODO
-- Delay buffering instead of wire elongation (if wire is elongated more
-than 1.5x original length insert a multiple of the buffer, add buffer attribute
-to node) WIP
+- Add validity check for merging point solutions (within Die area bound) WIP
+      - Must do buffering first, or validity check will cause infinite loops in certain edge cases
+      - Delay buffering instead of wire elongation (if wire is elongated more
+      than 1.5x original length insert a multiple of the buffer, add buffer attribute
+      to node) WIP
 - Unit Conversion at Data read-in
 - Split into header files
 - Account for Vertical wirelength
-- Add validity check for merging point solutions (within Die area bound) WIP
+
 - Check delay calculations
+- Find way to make sure MIV delay/cap from previous tier is not overwritte/is assigned correctly. 
 */
 using namespace std;
 
@@ -61,12 +64,16 @@ struct Point {
 struct Sink {
   int x, y, z;             // Unit: None, coordinates in an unspecified grid
   double inputCapacitance; // Unit: femtofarads (fF)
+  double capacitance; // Unit: femtofarads (fF)
   string color;            // Unit: None, simply a descriptive string
+  double delay; // Unit: picoseconds (ps)
+  int cluster_id; 
+  string sink_type;
   // Constructor with default sink color set to gray/uncolored
-  Sink(int x = 0, int y = 0, int z = 0, double inputCapacitance = 0,
-       string color = "Gray")
-      : x(x), y(y), z(z), inputCapacitance(inputCapacitance), color(color) {}
-};
+  Sink(int x = 0, int y = 0, int z = 0, double inputCapacitance = 0, double capacitance = 0,
+       string color = "Gray",double delay=0,int cluster_id=-1,string sink_type="sink")
+      : x(x), y(y), z(z), inputCapacitance(inputCapacitance), capacitance(capacitance), color(color),delay(delay),cluster_id(cluster_id),sink_type(sink_type) {}
+}; 
 
 struct Node {
   int id;             // Added id field to store unique identifier for each node
@@ -247,8 +254,6 @@ void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
   cout << "Z-cut!" << endl;
   int Zmin = getMinZ(S); // Set your Zmin value
   int Zmax = getMaxZ(S); // Set your Zmax value
-  // cout<<"zmin:  " << Zmin << endl;
-  // cout<<"zmax:  " << Zmax << endl;
   //  If Zs is less than or equal to Zmin
   if (Zs.z <= Zmin) {
     cout << "Zs is less than or equal to Zmin" << endl;
@@ -265,7 +270,6 @@ void Zcut(const vector<Sink> &S, const ClockSource &Zs, vector<Sink> &St,
   // If Zs is greater than or equal to Zmax
   else if (Zs.z >= Zmax) {
     cout << "If Zs is greater than or equal to Zmax" << endl;
-    // if (!S.empty()) {
     for (const auto &sink : S) {
       if (sink.z == Zmax) {
         St.push_back(sink);
@@ -551,6 +555,28 @@ void assignPhysicalLocations(Node *node) {
   assignPhysicalLocations(node->rightChild);
 }
 
+void assignPhysicalCharacteristics(Node *node) {
+    if (!node) {
+        return;
+    }
+    if (node->leftChild == nullptr && node->rightChild == nullptr) {
+        if (!node->sinks.empty()) {
+            // Assign physical location from first sink
+            node->x = node->sinks.front().x;
+            node->y = node->sinks.front().y;
+            node->z = node->sinks.front().z;
+            node->node_type = "Leaf";
+          
+            node->capacitance = node->sinks.front().capacitance;
+            // Assign delay from sink to node
+            node->elmoreDelay = node->sinks.front().delay;
+        }
+    }
+    // Recursive assignment for child nodes
+    assignPhysicalCharacteristics(node->leftChild);
+    assignPhysicalCharacteristics(node->rightChild);
+}
+
 // Helper function to check if a node has a physical location
 bool hasPhysicalLocation(const Node *node) {
   return node != nullptr && !(node->x == -1 && node->y == -1 && node->z == -1);
@@ -710,6 +736,38 @@ Point roundCoordinates(const Point &p) {
   }
 }
 
+bool isCoordinateUsedByLeaf(Node* root, int x, int y) {
+  if (!root) return false;
+
+  // If this is a leaf node (sink), check coordinates
+  if (!root->leftChild && !root->rightChild) {
+      if (root->x == x && root->y == y) return true;
+  }
+
+  // Recursively check children
+  return isCoordinateUsedByLeaf(root->leftChild, x, y) || 
+         isCoordinateUsedByLeaf(root->rightChild, x, y);
+}
+Point findNearestFreePoint(Node* root, Point original, int maxDistance = 5) {
+  // If original point is free, return it
+  if (!isCoordinateUsedByLeaf(root, original.x, original.y)) {
+      return original;
+  }
+
+  // Search in expanding square pattern
+  for (int d = 1; d <= maxDistance; d++) {
+      // Check points in a square pattern around the original
+      for (int dx = -d; dx <= d; dx++) {
+          for (int dy = -d; dy <= d; dy++) {
+              Point candidate = {original.x + dx, original.y + dy};
+              if (!isCoordinateUsedByLeaf(root, candidate.x, candidate.y)) {
+                  return candidate;
+              }
+          }
+      }
+  }
+  return original; // If no free point found, return original
+}
 
 void linear_planar_dme_sub(std::vector<Point> &S_prime, const Point &P_S_prime,
                            std::vector<Point> &tree_points) {
@@ -761,6 +819,49 @@ void linear_planar_dme_sub(std::vector<Point> &S_prime, const Point &P_S_prime,
       }
     }
   }
+  if (S1_prime.empty() || S2_prime.empty()) {
+      S1_prime.clear();
+      S2_prime.clear();
+      // First try diagonal-based partitioning
+      double diagonal_threshold = ms_v.x + ms_v.y;
+      for (const auto &sink : S_prime) {
+          if (sink.x + sink.y <= diagonal_threshold) {
+              S1_prime.push_back(sink);
+          } else {
+              S2_prime.push_back(sink);
+          }
+      }
+      // If diagonal partitioning fails, use quadrant-based approach
+      if (S1_prime.empty() || S2_prime.empty()) {
+          S1_prime.clear();
+          S2_prime.clear();
+
+          // Determine quadrants relative to merging point
+          for (const auto &sink : S_prime) {
+              if ((sink.x <= ms_v.x && sink.y <= ms_v.y) || 
+                  (sink.x > ms_v.x && sink.y > ms_v.y)) {
+                  S1_prime.push_back(sink);
+              } else {
+                  S2_prime.push_back(sink);
+              }
+          }
+          // Final fallback: force even split based on x+y coordinates
+          if (S1_prime.empty() || S2_prime.empty()) {
+              std::vector<Point> sorted_points = S_prime;
+              std::sort(sorted_points.begin(), sorted_points.end(),
+                       [](const Point &a, const Point &b) {
+                           return (a.x + a.y) < (b.x + b.y);
+                       });
+
+              S1_prime.clear();
+              S2_prime.clear();
+
+              size_t mid = sorted_points.size() / 2;
+              S1_prime.assign(sorted_points.begin(), sorted_points.begin() + mid);
+              S2_prime.assign(sorted_points.begin() + mid, sorted_points.end());
+          }
+      }
+  }
   print_points("DME Sinks S'", S_prime);
   print_points("DME Sinks S1'", S1_prime);
   print_points("DME Sinks S2'", S2_prime);
@@ -769,7 +870,6 @@ void linear_planar_dme_sub(std::vector<Point> &S_prime, const Point &P_S_prime,
   linear_planar_dme_sub(S1_prime, ms_v, tree_points);
   linear_planar_dme_sub(S2_prime, ms_v, tree_points);
 }
-
 
 std::vector<Point> linear_planar_dme(std::vector<Point>& sinks, const Point& clk_location = {-1, -1} ) {
   cout << "clock location dme: (" << clk_location.x << ", " << clk_location.y
@@ -945,12 +1045,12 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     // Assign merging points to parent and ancestors
     for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
         Point roundedPoint = roundCoordinates(mergingPoints[i]);
-        ancestors[i]->x = roundedPoint.x;
-        ancestors[i]->y = roundedPoint.y;
-        ancestors[i]->z = node1->z; // Keep z-coordinate consistent
+        // Find nearest free point
+        Point freePoint = findNearestFreePoint(root, roundedPoint);
+        ancestors[i]->x = freePoint.x;
+        ancestors[i]->y = freePoint.y;
+        ancestors[i]->z = node1->z;
         ancestors[i]->node_type = "Merging Point";
-        cout << "Merged At: (" << ancestors[i]->x << ", " << ancestors[i]->y 
-             << ") for Node ID: " << ancestors[i]->id << endl;
     }
 
     return mergingPointX *
@@ -982,7 +1082,8 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       cout << endl;
       cout << "Valid solution(s) rooted at subtree 2 are:\n";
       for (const Point &point : points) {
-        if (point.x == x2 && point.x >= 0 && point.y >= 0) {
+        if (point.x == x2 && point.x >= 0 && point.y >= 0 && point.x < layout.width && point.y < layout.height) {
+        //if (point.x == x2 && point.x >= 0 && point.y >= 0) {
           solutions.push_back(point);
         }
       }
@@ -1005,12 +1106,12 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       // Assign merging points to parent and ancestors
       for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
           Point roundedPoint = roundCoordinates(mergingPoints[i]);
-          ancestors[i]->x = roundedPoint.x;
-          ancestors[i]->y = roundedPoint.y;
-          ancestors[i]->z = node1->z; // Keep z-coordinate consistent
+          // Find nearest free point
+          Point freePoint = findNearestFreePoint(root, roundedPoint);
+          ancestors[i]->x = freePoint.x;
+          ancestors[i]->y = freePoint.y;
+          ancestors[i]->z = node1->z;
           ancestors[i]->node_type = "Merging Point";
-          cout << "Merged At: (" << ancestors[i]->x << ", " << ancestors[i]->y 
-               << ") for Node ID: " << ancestors[i]->id << endl;
       }
 
     } else {
@@ -1038,7 +1139,8 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       cout << endl;
       cout << "Valid solution(s) rooted at subtree 1 are:\n";
       for (const Point &point : points) {
-        if (point.x == x1 && point.x >= 0 && point.y >= 0) {
+        if (point.x == x1 && point.x >= 0 && point.y >= 0 && point.x < layout.width && point.y < layout.height) {
+        //if (point.x == x1 && point.x >= 0 && point.y >= 0) {
           solutions.push_back(point);
         }
       }
@@ -1046,8 +1148,6 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
         cout << "(" << point.x << ", " << point.y << ")\n";
       }
 
-      //linear_planar_dme(solutions);
-      // Call linear_planar_dme and get the merging point
       // Call linear_planar_dme and get all merging points
       vector<Point> mergingPoints = linear_planar_dme(solutions);
 
@@ -1064,12 +1164,12 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       // Assign merging points to parent and ancestors
       for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
           Point roundedPoint = roundCoordinates(mergingPoints[i]);
-          ancestors[i]->x = roundedPoint.x;
-          ancestors[i]->y = roundedPoint.y;
-          ancestors[i]->z = node1->z; // Keep z-coordinate consistent
+          // Find nearest free point
+          Point freePoint = findNearestFreePoint(root, roundedPoint);
+          ancestors[i]->x = freePoint.x;
+          ancestors[i]->y = freePoint.y;
+          ancestors[i]->z = node1->z;
           ancestors[i]->node_type = "Merging Point";
-          cout << "Merged At: (" << ancestors[i]->x << ", " << ancestors[i]->y 
-               << ") for Node ID: " << ancestors[i]->id << endl;
       }
 
     }
@@ -1115,9 +1215,6 @@ std::vector<Sink> treeToSinkVector(Node *root) {
   collectSinks(root, sinkVector);
   return sinkVector;
 }
-
-
-
 
 // Function to parse input from a file
 void parseInput(const string &filename) {
@@ -1260,20 +1357,67 @@ void expandCluster(std::vector<Point> &points, int P,
     }
   }
 }
-void dbscan(std::vector<Point> &points, double eps, int minPts) {
-  int clusterId = 0;
-  for (int i = 0; i < points.size(); ++i) {
-    if (points[i].clusterId != 0) {
-      continue;
+
+void dbscan(std::vector<Point> &points, double eps, int minPts, int bound) {
+    int clusterId = 0;
+    
+    // First pass: Regular DBSCAN to find all clusters
+    for (int i = 0; i < points.size(); ++i) {
+        if (points[i].clusterId != 0) {
+            continue;
+        }
+        
+        std::vector<int> neighbors = regionQuery(points, i, eps);
+        if (neighbors.size() < minPts) {
+            points[i].clusterId = 0;  // Mark as unclustered instead of -1
+        } else {
+            ++clusterId;
+            expandCluster(points, i, neighbors, clusterId, eps, minPts);
+        }
     }
-    std::vector<int> neighbors = regionQuery(points, i, eps);
-    if (neighbors.size() < minPts) {
-      points[i].clusterId = -1;
-    } else {
-      ++clusterId;
-      expandCluster(points, i, neighbors, clusterId, eps, minPts);
+    
+    // Count points in each cluster
+    std::map<int, int> clusterSizes;
+    for (const auto& point : points) {
+        if (point.clusterId > 0) {
+            clusterSizes[point.clusterId]++;
+        }
     }
-  }
+    
+    // Sort clusters by size
+    std::vector<std::pair<int, int>> sortedClusters;
+    for (const auto& pair : clusterSizes) {
+        sortedClusters.push_back({pair.second, pair.first}); // {size, clusterId}
+    }
+    std::sort(sortedClusters.begin(), sortedClusters.end(), 
+              std::greater<std::pair<int, int>>()); // Sort by size in descending order
+    
+    // Keep track of clusters to keep
+    std::set<int> keepClusters;
+    for (int i = 0; i < std::min(bound, (int)sortedClusters.size()); ++i) {
+        keepClusters.insert(sortedClusters[i].second);
+    }
+    
+    // Second pass: Mark points in smaller clusters as cluster 0
+    for (auto& point : points) {
+        if (point.clusterId > 0 && keepClusters.find(point.clusterId) == keepClusters.end()) {
+            point.clusterId = 0;  // Mark as cluster 0 instead of -1
+        }
+    }
+    
+    // Renumber remaining clusters from 1 to bound
+    std::map<int, int> clusterRemap;
+    int newClusterId = 1;
+    for (const auto& cluster : keepClusters) {
+        clusterRemap[cluster] = newClusterId++;
+    }
+    
+    // Apply new cluster numbering, leaving cluster 0 points unchanged
+    for (auto& point : points) {
+        if (point.clusterId > 0) {
+            point.clusterId = clusterRemap[point.clusterId];
+        }
+    }
 }
 void extractSinks(Node *node, std::vector<Sink> &sinks) {
   if (!node) {
@@ -1342,24 +1486,20 @@ void assignClusterIdsToLeafNodes(Node *node, const std::vector<Point> &points) {
   assignClusterIdsToLeafNodes(node->rightChild, points);
 }
 
-void runDBSCANAndAssignClusters(Node *root, double eps, int minPts) {
-  std::vector<Sink> sinks;
-  extractSinks(root, sinks);
+void runDBSCANAndAssignClusters(Node *root, double eps, int minPts, int bound) {
+    std::vector<Sink> sinks;
+    extractSinks(root, sinks);
 
-  std::vector<Point> points;
-  for (const auto &sink : sinks) {
-    points.push_back(
-        {static_cast<double>(sink.x), static_cast<double>(sink.y), 0});
-  }
+    std::vector<Point> points;
+    for (const auto &sink : sinks) {
+        points.push_back({static_cast<double>(sink.x), static_cast<double>(sink.y), 0});
+    }
 
-  dbscan(points, eps, minPts);
+    dbscan(points, eps, minPts, bound);  // Pass the bound parameter
 
-  // Assign cluster IDs back to leaf nodes
-  assignClusterIdsToLeafNodes(root, points);
-  outputDBSCANResults(points, root->z,
-                      "dbscan_results_z_" + std::to_string(root->z) + ".csv");
-} 
-
+    assignClusterIdsToLeafNodes(root, points);
+    outputDBSCANResults(points, root->z, "dbscan_results_z_" + std::to_string(root->z) + ".csv");
+}
 
 
 // Function to calculate the Manhattan distance between two sinks
@@ -1638,23 +1778,33 @@ int main() {
   // Redirect cout to the log file
   std::streambuf *coutBuf = std::cout.rdbuf();
   std::cout.rdbuf(logFile.rdbuf());
-
-  int bound = 10;
+  //int testbound = 10;
+  int bound = 90; //Inserts Bound+1 MIVs per tier, Bound MIVs + 1 MIV for the unclustered sinks
   int idealSum = 0;
   int zsmSum = 0;
   int subtreeTotalSum = 0;
-  parseInput("benchmark10.txt");
+  parseInput("benchmark11.txt");
   displayParsedData();
   //Separate sinks by their z-coordinate
   map<int, vector<Sink>> sinksByZ;
+  //std::map<int, std::vector<SubtreeInfo>> tierSubtreeInfo;
+  std::map<int, std::vector<Sink>> tierMIVSinks;
   for (const auto &sink : sinks) {
     sinksByZ[sink.z].push_back(sink);
   }
 
   for (const auto &pair : sinksByZ) {
     int z = pair.first;
-    const auto &sinksGroup = pair.second;
+    //const auto &sinksGroup = pair.second;
+    vector<Sink> sinksGroup = pair.second;
     int tierZsmSum = 0;
+
+    // Add MIV sinks from lower tier (z-1) if they exist
+    if (z > 1 && tierMIVSinks.find(z-1) != tierMIVSinks.end()) {
+        const auto& mivSinks = tierMIVSinks[z-1];
+        sinksGroup.insert(sinksGroup.end(), mivSinks.begin(), mivSinks.end());
+    }
+    
     // For each z-coordinate, generate the tree and then perform zero skew tree
     Node *root = AbsTreeGen3D(sinksGroup, bound);
     int wireLength = calculateWirelength(sinksGroup);
@@ -1664,10 +1814,13 @@ int main() {
     string tierFilename =
         "zeroskew_points_and_lines_z_" + to_string(z) + ".txt";
     assignPhysicalLocations(root);
+    //assignPhysicalCharacteristics(root);
     //depthFirstCapacitance(root);
+    //Baseline case, eps = layout.width, minPts=1 or numSinks
     double eps = layout.width * .085; // Epsilon distance
-    int minPts = 1;                    // Minimum points to form a cluster
-    runDBSCANAndAssignClusters(root, eps, minPts);
+    int minPts = 4;                    // Minimum points to form a cluster
+    //runDBSCANAndAssignClusters(root, eps, minPts);
+    runDBSCANAndAssignClusters(root, eps, minPts, bound);
     clusterMidpoints = calculateClusterMidpoints(root);
     //  Create subtrees for each cluster
     std::vector<Node *> clusterRoots = createClusterSubtrees(root);
@@ -1688,7 +1841,16 @@ int main() {
       Node *zeroSkewSubtree = zeroSkewTree(AbstractSubtree);
       zeroSkewSubtree->node_type = "MIV";
       depthFirstCapacitance(zeroSkewSubtree);
-      // depthFirstDelay(zeroSkewSubtree, tsvUnits.resistance);
+      depthFirstDelay(zeroSkewSubtree, tsvUnits.resistance);
+      // Store the subtree information in map
+      Sink rootSink;
+      rootSink.x = zeroSkewSubtree->x;
+      rootSink.y = zeroSkewSubtree->y;
+      rootSink.z = z;  // current tier
+      rootSink.delay = zeroSkewSubtree->elmoreDelay;  // store the delay
+      rootSink.cluster_id = zeroSkewSubtree->cluster_id;  // if you need to track cluster
+      rootSink.sink_type = "MIV";  // if you need to track cluster
+      tierMIVSinks[z].push_back(rootSink);
       printTree(zeroSkewSubtree);
 
       int subtreeZsmWireLength =
@@ -1721,7 +1883,15 @@ int main() {
     //roots.push_back(zeroSkewTree(root)); // Apply zero skew tree operation
     // and store the root
   }
-
+  // To print/access the information:
+  for (const auto& pair : tierMIVSinks) {
+      cout << "Tier " << pair.first << " subtree roots:" << endl;
+      for (const auto& sink : pair.second) {
+          cout<< "Sink type: " << sink.sink_type <<  "Cluster " << sink.cluster_id 
+               << " at (" << sink.x << "," << sink.y 
+               << ") with delay " << sink.delay << endl;
+      }
+  }
   auto end = std::chrono::high_resolution_clock::now();
   // Calculate the duration
   auto duration =
