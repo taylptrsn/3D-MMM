@@ -14,7 +14,8 @@
 - Unit Conversion at Data read-in
 - Split into header files
 - Check delay calculations
-- Find way to make sure MIV delay/cap from previous tier is not overwritten/is assigned correctly. 
+- Find way to make sure MIV delay/cap from previous tier is not overwritten/is
+assigned correctly.
 */
 using namespace std;
 
@@ -57,16 +58,19 @@ struct Point {
 struct Sink {
   int x, y, z;             // Unit: None, coordinates in an unspecified grid
   double inputCapacitance; // Unit: femtofarads (fF)
-  double capacitance; // Unit: femtofarads (fF)
+  double capacitance;      // Unit: femtofarads (fF)
   string color;            // Unit: None, simply a descriptive string
-  double delay; // Unit: picoseconds (ps)
-  int cluster_id; 
+  double delay;            // Unit: picoseconds (ps)
+  int cluster_id;
   string sink_type;
   // Constructor with default sink color set to gray/uncolored
-  Sink(int x = 0, int y = 0, int z = 0, double inputCapacitance = 0, double capacitance = 0,
-       string color = "Gray",double delay=0,int cluster_id=-1,string sink_type="sink")
-      : x(x), y(y), z(z), inputCapacitance(inputCapacitance), capacitance(capacitance), color(color),delay(delay),cluster_id(cluster_id),sink_type(sink_type) {}
-}; 
+  Sink(int x = 0, int y = 0, int z = 0, double inputCapacitance = 0,
+       double capacitance = 0, string color = "Gray", double delay = 0,
+       int cluster_id = -1, string sink_type = "sink")
+      : x(x), y(y), z(z), inputCapacitance(inputCapacitance),
+        capacitance(capacitance), color(color), delay(delay),
+        cluster_id(cluster_id), sink_type(sink_type) {}
+};
 
 /*struct Node {
   int id;             // Added id field to store unique identifier for each node
@@ -95,26 +99,25 @@ struct Sink {
         cluster_id(cluster_id) {}
 }; */
 struct Node {
-  int id;             
-  vector<Sink> sinks; 
+  int id;
+  vector<Sink> sinks;
   Node *leftChild;
   Node *rightChild;
   string color;
-  int dieIndex;       
-  double capacitance; 
-  double resistance;  
-  double elmoreDelay; 
-  bool isBuffered;    
-  int x, y, z;     
-  string node_type; 
-  int cluster_id;   
-  double bufferDelay; 
+  int dieIndex;
+  double capacitance;
+  double resistance;
+  double elmoreDelay;
+  bool isBuffered;
+  int x, y, z;
+  string node_type;
+  int cluster_id;
+  double bufferDelay;
   Node(const vector<Sink> &sinks, string color = "Gray",
        double capacitance = 0.0, double resistance = 0.0,
        bool isBuffered = false, int id = 0, int x = -1, int y = -1, int z = -1,
-       string node_type = "undefined",
-       int cluster_id = -1,
-       double bufferDelay = 0.0) 
+       string node_type = "undefined", int cluster_id = -1,
+       double bufferDelay = 0.0)
       : id(id), sinks(sinks), leftChild(nullptr), rightChild(nullptr),
         color(color), capacitance(capacitance), resistance(resistance),
         isBuffered(isBuffered), x(x), y(y), z(z), node_type(node_type),
@@ -574,25 +577,25 @@ void assignPhysicalLocations(Node *node) {
 }
 
 void assignPhysicalCharacteristics(Node *node) {
-    if (!node) {
-        return;
+  if (!node) {
+    return;
+  }
+  if (node->leftChild == nullptr && node->rightChild == nullptr) {
+    if (!node->sinks.empty()) {
+      // Assign physical location from first sink
+      node->x = node->sinks.front().x;
+      node->y = node->sinks.front().y;
+      node->z = node->sinks.front().z;
+      node->node_type = "Leaf";
+
+      node->capacitance = node->sinks.front().capacitance;
+      // Assign delay from sink to node
+      node->elmoreDelay = node->sinks.front().delay;
     }
-    if (node->leftChild == nullptr && node->rightChild == nullptr) {
-        if (!node->sinks.empty()) {
-            // Assign physical location from first sink
-            node->x = node->sinks.front().x;
-            node->y = node->sinks.front().y;
-            node->z = node->sinks.front().z;
-            node->node_type = "Leaf";
-          
-            node->capacitance = node->sinks.front().capacitance;
-            // Assign delay from sink to node
-            node->elmoreDelay = node->sinks.front().delay;
-        }
-    }
-    // Recursive assignment for child nodes
-    assignPhysicalCharacteristics(node->leftChild);
-    assignPhysicalCharacteristics(node->rightChild);
+  }
+  // Recursive assignment for child nodes
+  assignPhysicalCharacteristics(node->leftChild);
+  assignPhysicalCharacteristics(node->rightChild);
 }
 
 // Helper function to check if a node has a physical location
@@ -712,31 +715,31 @@ double radius(const std::vector<Point> &sinks) {
 }
 
 Point center(const std::vector<Point> &sinks, double r) {
-    if (sinks.empty()) {
-        return {0, 0};
-    }
-    
-    if (sinks.size() == 1) {
-        return {sinks[0].x, sinks[0].y};
-    }
+  if (sinks.empty()) {
+    return {0, 0};
+  }
 
-    // For multiple sinks, find the actual midpoint between them
-    int min_x = sinks[0].x, max_x = sinks[0].x;
-    int min_y = sinks[0].y, max_y = sinks[0].y;
+  if (sinks.size() == 1) {
+    return {sinks[0].x, sinks[0].y};
+  }
 
-    for (const auto &sink : sinks) {
-        min_x = std::min(min_x, (int)sink.x);
-        max_x = std::max(max_x, (int)sink.x);
-        min_y = std::min(min_y, (int)sink.y);
-        max_y = std::max(max_y, (int)sink.y);
-    }
+  // For multiple sinks, find the actual midpoint between them
+  int min_x = sinks[0].x, max_x = sinks[0].x;
+  int min_y = sinks[0].y, max_y = sinks[0].y;
 
-    // Calculate the midpoint
-    double midpoint_x = (min_x + max_x) / 2.0;
-    double midpoint_y = (min_y + max_y) / 2.0;
+  for (const auto &sink : sinks) {
+    min_x = std::min(min_x, (int)sink.x);
+    max_x = std::max(max_x, (int)sink.x);
+    min_y = std::min(min_y, (int)sink.y);
+    max_y = std::max(max_y, (int)sink.y);
+  }
 
-    // Round to nearest integer since we're working with a grid
-    return {round(midpoint_x), round(midpoint_y)};
+  // Calculate the midpoint
+  double midpoint_x = (min_x + max_x) / 2.0;
+  double midpoint_y = (min_y + max_y) / 2.0;
+
+  // Round to nearest integer since we're working with a grid
+  return {round(midpoint_x), round(midpoint_y)};
 }
 void print_points(const std::string &label, const std::vector<Point> &points) {
   std::cout << label << ": ";
@@ -755,35 +758,37 @@ Point roundCoordinates(const Point &p) {
   }
 }
 
-bool isCoordinateUsedByLeaf(Node* root, int x, int y) {
-  if (!root) return false;
+bool isCoordinateUsedByLeaf(Node *root, int x, int y) {
+  if (!root)
+    return false;
 
   // If this is a leaf node (sink), check coordinates
   if (!root->leftChild && !root->rightChild) {
-      if (root->x == x && root->y == y) return true;
+    if (root->x == x && root->y == y)
+      return true;
   }
 
   // Recursively check children
-  return isCoordinateUsedByLeaf(root->leftChild, x, y) || 
+  return isCoordinateUsedByLeaf(root->leftChild, x, y) ||
          isCoordinateUsedByLeaf(root->rightChild, x, y);
 }
-Point findNearestFreePoint(Node* root, Point original, int maxDistance = 5) {
+Point findNearestFreePoint(Node *root, Point original, int maxDistance = 5) {
   // If original point is free, return it
   if (!isCoordinateUsedByLeaf(root, original.x, original.y)) {
-      return original;
+    return original;
   }
 
   // Search in expanding square pattern
   for (int d = 1; d <= maxDistance; d++) {
-      // Check points in a square pattern around the original
-      for (int dx = -d; dx <= d; dx++) {
-          for (int dy = -d; dy <= d; dy++) {
-              Point candidate = {original.x + dx, original.y + dy};
-              if (!isCoordinateUsedByLeaf(root, candidate.x, candidate.y)) {
-                  return candidate;
-              }
-          }
+    // Check points in a square pattern around the original
+    for (int dx = -d; dx <= d; dx++) {
+      for (int dy = -d; dy <= d; dy++) {
+        Point candidate = {original.x + dx, original.y + dy};
+        if (!isCoordinateUsedByLeaf(root, candidate.x, candidate.y)) {
+          return candidate;
+        }
       }
+    }
   }
   return original; // If no free point found, return original
 }
@@ -839,47 +844,47 @@ void linear_planar_dme_sub(std::vector<Point> &S_prime, const Point &P_S_prime,
     }
   }
   if (S1_prime.empty() || S2_prime.empty()) {
+    S1_prime.clear();
+    S2_prime.clear();
+    // First try diagonal-based partitioning
+    double diagonal_threshold = ms_v.x + ms_v.y;
+    for (const auto &sink : S_prime) {
+      if (sink.x + sink.y <= diagonal_threshold) {
+        S1_prime.push_back(sink);
+      } else {
+        S2_prime.push_back(sink);
+      }
+    }
+    // If diagonal partitioning fails, use quadrant-based approach
+    if (S1_prime.empty() || S2_prime.empty()) {
       S1_prime.clear();
       S2_prime.clear();
-      // First try diagonal-based partitioning
-      double diagonal_threshold = ms_v.x + ms_v.y;
+
+      // Determine quadrants relative to merging point
       for (const auto &sink : S_prime) {
-          if (sink.x + sink.y <= diagonal_threshold) {
-              S1_prime.push_back(sink);
-          } else {
-              S2_prime.push_back(sink);
-          }
+        if ((sink.x <= ms_v.x && sink.y <= ms_v.y) ||
+            (sink.x > ms_v.x && sink.y > ms_v.y)) {
+          S1_prime.push_back(sink);
+        } else {
+          S2_prime.push_back(sink);
+        }
       }
-      // If diagonal partitioning fails, use quadrant-based approach
+      // Final fallback: force even split based on x+y coordinates
       if (S1_prime.empty() || S2_prime.empty()) {
-          S1_prime.clear();
-          S2_prime.clear();
+        std::vector<Point> sorted_points = S_prime;
+        std::sort(sorted_points.begin(), sorted_points.end(),
+                  [](const Point &a, const Point &b) {
+                    return (a.x + a.y) < (b.x + b.y);
+                  });
 
-          // Determine quadrants relative to merging point
-          for (const auto &sink : S_prime) {
-              if ((sink.x <= ms_v.x && sink.y <= ms_v.y) || 
-                  (sink.x > ms_v.x && sink.y > ms_v.y)) {
-                  S1_prime.push_back(sink);
-              } else {
-                  S2_prime.push_back(sink);
-              }
-          }
-          // Final fallback: force even split based on x+y coordinates
-          if (S1_prime.empty() || S2_prime.empty()) {
-              std::vector<Point> sorted_points = S_prime;
-              std::sort(sorted_points.begin(), sorted_points.end(),
-                       [](const Point &a, const Point &b) {
-                           return (a.x + a.y) < (b.x + b.y);
-                       });
+        S1_prime.clear();
+        S2_prime.clear();
 
-              S1_prime.clear();
-              S2_prime.clear();
-
-              size_t mid = sorted_points.size() / 2;
-              S1_prime.assign(sorted_points.begin(), sorted_points.begin() + mid);
-              S2_prime.assign(sorted_points.begin() + mid, sorted_points.end());
-          }
+        size_t mid = sorted_points.size() / 2;
+        S1_prime.assign(sorted_points.begin(), sorted_points.begin() + mid);
+        S2_prime.assign(sorted_points.begin() + mid, sorted_points.end());
       }
+    }
   }
   print_points("DME Sinks S'", S_prime);
   print_points("DME Sinks S1'", S1_prime);
@@ -890,7 +895,8 @@ void linear_planar_dme_sub(std::vector<Point> &S_prime, const Point &P_S_prime,
   linear_planar_dme_sub(S2_prime, ms_v, tree_points);
 }
 
-std::vector<Point> linear_planar_dme(std::vector<Point>& sinks, const Point& clk_location = {-1, -1} ) {
+std::vector<Point> linear_planar_dme(std::vector<Point> &sinks,
+                                     const Point &clk_location = {-1, -1}) {
   cout << "clock location dme: (" << clk_location.x << ", " << clk_location.y
        << ")" << endl;
   double r = radius(sinks);
@@ -919,7 +925,7 @@ std::vector<Point> linear_planar_dme(std::vector<Point>& sinks, const Point& clk
   for (auto &point : tree_points) {
     point = roundCoordinates(point);
   }
-  
+
   return tree_points;
 }
 
@@ -968,15 +974,15 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       getNodeDelay(root, parent->id) - getNodeDelay(root, id1);
   double delaySegment2 =
       getNodeDelay(root, parent->id) - getNodeDelay(root, id2);
-  //cout << delaySegment1 << endl;
-  //cout << delaySegment2 << endl;
+  // cout << delaySegment1 << endl;
+  // cout << delaySegment2 << endl;
   double capacitanceSegment1 = getNodeCapacitance(root, id1);
   cout << "CapSeg1: " << capacitanceSegment1 << endl;
   double capacitanceSegment2 = getNodeCapacitance(root, id2);
   cout << "CapSeg2: " << capacitanceSegment2 << endl;
   int lengthOfWire = calculateManhattanDistance(root, id1, id2);
   double delayDifference = abs(delaySegment1 - delaySegment2);
-
+  int sink1_distance, sink2_distance;
   cout << endl;
   double x1 = node1->x;
   double y1 = node1->y;
@@ -997,8 +1003,18 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
                         capacitanceSegment1 + capacitanceSegment2);
   double mergingPointX = numerator / denominator;
 
+  if (delaySegment2 > delaySegment1) {
+      // Flip the assignments
+      sink1_distance = floor((1 - mergingPointX) * lengthOfWire);
+      sink2_distance = ceil(mergingPointX * lengthOfWire);
+  } else {
+      // Keep original assignments
+      sink1_distance = ceil(mergingPointX * lengthOfWire);
+      sink2_distance = floor((1 - mergingPointX) * lengthOfWire);
+  }
+  
   if (mergingPointX >= 0 && mergingPointX <= 1) {
-    cout << "Tapping point in range, calculating merging point X: "
+    /*cout << "Tapping point in range, calculating merging point X: "
          << mergingPointX << endl;
     cout << "length of wire: " << lengthOfWire << endl;
     cout << "merge point distance for sink 1 :"
@@ -1008,7 +1024,18 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
     vector<Point> points1 =
         findPoints(x1, y1, ceil(mergingPointX * lengthOfWire));
     vector<Point> points2 =
-        findPoints(x2, y2, floor((1 - mergingPointX) * lengthOfWire));
+        findPoints(x2, y2, floor((1 - mergingPointX) * lengthOfWire));*/
+    cout << "Tapping point in range, calculating merging point X: "
+       << mergingPointX << endl;
+    cout << "length of wire: " << lengthOfWire << endl;
+    cout << "merge point distance for sink 1 :"
+       << sink1_distance << endl;
+    cout << "merge point distance for sink 2 :"
+       << sink2_distance << endl;
+    vector<Point> points1 =
+      findPoints(x1, y1, sink1_distance);
+    vector<Point> points2 =
+      findPoints(x2, y2, sink2_distance);
     cout << endl;
     cout << "All solutions for point 1 are:\n";
     for (const Point &point : points1) {
@@ -1043,33 +1070,34 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       cout << "(" << point.x << ", " << point.y << ")\n";
     }
 
-    //test
+    // test
     std::vector<Point> solutions(solutions1.begin(), solutions1.end());
     // Append elements from the second vector to the new vector
-    solutions = filterPoints(solutions, 1.5);
-    solutions.insert(solutions.end(), solutions2.begin(),solutions2.end());
+    //solutions = filterPoints(solutions, 1.5);
+    solutions.insert(solutions.end(), solutions2.begin(), solutions2.end());
     // Call linear_planar_dme and get all merging points
     vector<Point> mergingPoints = linear_planar_dme(solutions);
 
     // Find the parent node and its ancestors
-    Node* parent = findLCA(root, id1, id2);
-    vector<Node*> ancestors;
-    Node* current = parent;
+    Node *parent = findLCA(root, id1, id2);
+    vector<Node *> ancestors;
+    Node *current = parent;
     while (current != nullptr) {
-        ancestors.push_back(current);
-        current = findLCA(root, current->id, root->id);
-        if (current == root) break;
+      ancestors.push_back(current);
+      current = findLCA(root, current->id, root->id);
+      if (current == root)
+        break;
     }
 
     // Assign merging points to parent and ancestors
     for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
-        Point roundedPoint = roundCoordinates(mergingPoints[i]);
-        // Find nearest free point
-        Point freePoint = findNearestFreePoint(root, roundedPoint);
-        ancestors[i]->x = freePoint.x;
-        ancestors[i]->y = freePoint.y;
-        ancestors[i]->z = node1->z;
-        ancestors[i]->node_type = "Merging Point";
+      Point roundedPoint = roundCoordinates(mergingPoints[i]);
+      // Find nearest free point
+      Point freePoint = findNearestFreePoint(root, roundedPoint);
+      ancestors[i]->x = freePoint.x;
+      ancestors[i]->y = freePoint.y;
+      ancestors[i]->z = node1->z;
+      ancestors[i]->node_type = "Merging Point";
     }
 
     return mergingPointX *
@@ -1090,11 +1118,10 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
                (resistancePerUnitLength * capacitancePerUnitLength);
       extension = round(lPrime);
 
-
       /*double totalLength = lengthOfWire + extension;
       // Check if buffer is needed (1.5x threshold)
       if (totalLength > (lengthOfWire * 1.5)) {
-          cout << "Adding buffer at merging point due to extended length: " 
+          cout << "Adding buffer at merging point due to extended length: "
       << totalLength << " (original: " << lengthOfWire << ")" << endl;
           // Update parent node to include buffer
           parent->isBuffered = true;
@@ -1109,29 +1136,31 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
           lPrime=lengthOfWire;
           cout << "Buffer inserted, length will not be extended" << endl;
       } */
-      
+
       double totalLength = lengthOfWire + extension;
       // Check if buffer is needed (1.5x threshold)
       if (totalLength > (lengthOfWire * 1.5)) {
-          cout << "Adding buffer at merging point due to extended length: " 
-      << totalLength << " (original: " << lengthOfWire << ")" << endl;
+        cout << "Adding buffer at merging point due to extended length: "
+             << totalLength << " (original: " << lengthOfWire << ")" << endl;
 
-          // Calculate required buffer delay to equalize delays
-          double requiredBufferDelay = delayDifference;
-          // Update parent node to include buffer
-          //parent->isBuffered = true;
-          parent->bufferDelay = requiredBufferDelay;
-          parent->resistance = bufferUnits.outputResistance;
-          //parent->capacitance = bufferUnits.inputCapacitance;
-          // Add buffer delay to the path
-          //parent->elmoreDelay += bufferUnits.intrinsicDelay;
-          // Recalculate delays considering buffer
-          //delaySegment1 = getNodeDelay(root, parent->id);
-          //delaySegment2 = getNodeDelay(root, parent->id);
-          extension=0;
-          lPrime=lengthOfWire;
-          cout << "Buffer with delay " << requiredBufferDelay <<"fs inserted at merging point, length will not be extended" << endl;
-      } 
+        // Calculate required buffer delay to equalize delays
+        double requiredBufferDelay = delayDifference;
+        // Update parent node to include buffer
+        // parent->isBuffered = true;
+        parent->bufferDelay = requiredBufferDelay;
+        parent->resistance = bufferUnits.outputResistance;
+        // parent->capacitance = bufferUnits.inputCapacitance;
+        //  Add buffer delay to the path
+        // parent->elmoreDelay += bufferUnits.intrinsicDelay;
+        //  Recalculate delays considering buffer
+        // delaySegment1 = getNodeDelay(root, parent->id);
+        // delaySegment2 = getNodeDelay(root, parent->id);
+        extension = 0;
+        lPrime = lengthOfWire;
+        cout << "Buffer with delay " << requiredBufferDelay
+             << "fs inserted at merging point, length will not be extended"
+             << endl;
+      }
       cout << "lPrime rounded = " << round(lPrime) << endl;
       cout << "Extending L from " << lengthOfWire << " to "
            << extension + lengthOfWire << endl;
@@ -1144,8 +1173,9 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       cout << endl;
       cout << "Valid solution(s) rooted at subtree 2 are:\n";
       for (const Point &point : points) {
-        if (point.x == x2 && point.x >= 0 && point.y >= 0 && point.x < layout.width && point.y < layout.height) {
-        //if (point.x == x2 && point.x >= 0 && point.y >= 0) {
+        if (point.x == x2 && point.x >= 0 && point.y >= 0 &&
+            point.x < layout.width && point.y < layout.height) {
+          // if (point.x == x2 && point.x >= 0 && point.y >= 0) {
           solutions.push_back(point);
         }
       }
@@ -1156,24 +1186,25 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       vector<Point> mergingPoints = linear_planar_dme(solutions);
 
       // Find the parent node and its ancestors
-      Node* parent = findLCA(root, id1, id2);
-      vector<Node*> ancestors;
-      Node* current = parent;
+      Node *parent = findLCA(root, id1, id2);
+      vector<Node *> ancestors;
+      Node *current = parent;
       while (current != nullptr) {
-          ancestors.push_back(current);
-          current = findLCA(root, current->id, root->id);
-          if (current == root) break;
+        ancestors.push_back(current);
+        current = findLCA(root, current->id, root->id);
+        if (current == root)
+          break;
       }
 
       // Assign merging points to parent and ancestors
       for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
-          Point roundedPoint = roundCoordinates(mergingPoints[i]);
-          // Find nearest free point
-          Point freePoint = findNearestFreePoint(root, roundedPoint);
-          ancestors[i]->x = freePoint.x;
-          ancestors[i]->y = freePoint.y;
-          ancestors[i]->z = node1->z;
-          ancestors[i]->node_type = "Merging Point";
+        Point roundedPoint = roundCoordinates(mergingPoints[i]);
+        // Find nearest free point
+        Point freePoint = findNearestFreePoint(root, roundedPoint);
+        ancestors[i]->x = freePoint.x;
+        ancestors[i]->y = freePoint.y;
+        ancestors[i]->z = node1->z;
+        ancestors[i]->node_type = "Merging Point";
       }
 
     } else {
@@ -1193,7 +1224,7 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       /*double totalLength = lengthOfWire + extension;
       // Check if buffer is needed (1.5x threshold)
       if (totalLength > (lengthOfWire * 1.5)) {
-          cout << "Adding buffer at merging point due to extended length: " 
+          cout << "Adding buffer at merging point due to extended length: "
       << totalLength << " (original: " << lengthOfWire << ")" << endl;
           // Update parent node to include buffer
           parent->isBuffered = true;
@@ -1212,25 +1243,27 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       double totalLength = lengthOfWire + extension;
       // Check if buffer is needed (1.5x threshold)
       if (totalLength > (lengthOfWire * 1.5)) {
-          cout << "Adding buffer at merging point due to extended length: " 
-      << totalLength << " (original: " << lengthOfWire << ")" << endl;
+        cout << "Adding buffer at merging point due to extended length: "
+             << totalLength << " (original: " << lengthOfWire << ")" << endl;
 
-          // Calculate required buffer delay to equalize delays
-          double requiredBufferDelay = delayDifference;
-          // Update parent node to include buffer
-          //parent->isBuffered = true;
-          parent->bufferDelay = requiredBufferDelay;
-          parent->resistance = bufferUnits.outputResistance;
-          //parent->capacitance = bufferUnits.inputCapacitance;
-          // Add buffer delay to the path
-          parent->elmoreDelay += bufferUnits.intrinsicDelay;
-          // Recalculate delays considering buffer
-          //delaySegment1 = getNodeDelay(root, parent->id);
-          //delaySegment2 = getNodeDelay(root, parent->id);
-          extension=0;
-          lPrime=lengthOfWire;
-          cout << "Buffer with delay " << requiredBufferDelay <<"fs inserted at merging point, length will not be extended" << endl;
-      } 
+        // Calculate required buffer delay to equalize delays
+        double requiredBufferDelay = delayDifference;
+        // Update parent node to include buffer
+        // parent->isBuffered = true;
+        parent->bufferDelay = requiredBufferDelay;
+        parent->resistance = bufferUnits.outputResistance;
+        // parent->capacitance = bufferUnits.inputCapacitance;
+        //  Add buffer delay to the path
+        parent->elmoreDelay += bufferUnits.intrinsicDelay;
+        // Recalculate delays considering buffer
+        // delaySegment1 = getNodeDelay(root, parent->id);
+        // delaySegment2 = getNodeDelay(root, parent->id);
+        extension = 0;
+        lPrime = lengthOfWire;
+        cout << "Buffer with delay " << requiredBufferDelay
+             << "fs inserted at merging point, length will not be extended"
+             << endl;
+      }
       cout << "lPrime rounded = " << round(lPrime) << endl;
       cout << "L from " << lengthOfWire << " to " << extension + lengthOfWire
            << endl;
@@ -1243,8 +1276,9 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       cout << endl;
       cout << "Valid solution(s) rooted at subtree 1 are:\n";
       for (const Point &point : points) {
-        if (point.x == x1 && point.x >= 0 && point.y >= 0 && point.x < layout.width && point.y < layout.height) {
-        //if (point.x == x1 && point.x >= 0 && point.y >= 0) {
+        if (point.x == x1 && point.x >= 0 && point.y >= 0 &&
+            point.x < layout.width && point.y < layout.height) {
+          // if (point.x == x1 && point.x >= 0 && point.y >= 0) {
           solutions.push_back(point);
         }
       }
@@ -1256,26 +1290,26 @@ double ZeroSkewMerge(Node *root, int id1, int id2) {
       vector<Point> mergingPoints = linear_planar_dme(solutions);
 
       // Find the parent node and its ancestors
-      Node* parent = findLCA(root, id1, id2);
-      vector<Node*> ancestors;
-      Node* current = parent;
+      Node *parent = findLCA(root, id1, id2);
+      vector<Node *> ancestors;
+      Node *current = parent;
       while (current != nullptr) {
-          ancestors.push_back(current);
-          current = findLCA(root, current->id, root->id);
-          if (current == root) break;
+        ancestors.push_back(current);
+        current = findLCA(root, current->id, root->id);
+        if (current == root)
+          break;
       }
 
       // Assign merging points to parent and ancestors
       for (size_t i = 0; i < min(mergingPoints.size(), ancestors.size()); ++i) {
-          Point roundedPoint = roundCoordinates(mergingPoints[i]);
-          // Find nearest free point
-          Point freePoint = findNearestFreePoint(root, roundedPoint);
-          ancestors[i]->x = freePoint.x;
-          ancestors[i]->y = freePoint.y;
-          ancestors[i]->z = node1->z;
-          ancestors[i]->node_type = "Merging Point";
+        Point roundedPoint = roundCoordinates(mergingPoints[i]);
+        // Find nearest free point
+        Point freePoint = findNearestFreePoint(root, roundedPoint);
+        ancestors[i]->x = freePoint.x;
+        ancestors[i]->y = freePoint.y;
+        ancestors[i]->z = node1->z;
+        ancestors[i]->node_type = "Merging Point";
       }
-
     }
     cout << endl;
     return lPrime;
@@ -1299,7 +1333,6 @@ Node *zeroSkewTree(Node *root) {
   }
   return root;
 }
-
 
 // Helper function to collect all sinks from the tree into a vector
 void collectSinks(Node *node, std::vector<Sink> &sinkVector) {
@@ -1463,65 +1496,67 @@ void expandCluster(std::vector<Point> &points, int P,
 }
 
 void dbscan(std::vector<Point> &points, double eps, int minPts, int bound) {
-    int clusterId = 0;
-    
-    // First pass: Regular DBSCAN to find all clusters
-    for (int i = 0; i < points.size(); ++i) {
-        if (points[i].clusterId != 0) {
-            continue;
-        }
-        
-        std::vector<int> neighbors = regionQuery(points, i, eps);
-        if (neighbors.size() < minPts) {
-            points[i].clusterId = 0;  // Mark as unclustered instead of -1
-        } else {
-            ++clusterId;
-            expandCluster(points, i, neighbors, clusterId, eps, minPts);
-        }
+  int clusterId = 0;
+
+  // First pass: Regular DBSCAN to find all clusters
+  for (int i = 0; i < points.size(); ++i) {
+    if (points[i].clusterId != 0) {
+      continue;
     }
-    
-    // Count points in each cluster
-    std::map<int, int> clusterSizes;
-    for (const auto& point : points) {
-        if (point.clusterId > 0) {
-            clusterSizes[point.clusterId]++;
-        }
+
+    std::vector<int> neighbors = regionQuery(points, i, eps);
+    if (neighbors.size() < minPts) {
+      points[i].clusterId = 0; // Mark as unclustered instead of -1
+    } else {
+      ++clusterId;
+      expandCluster(points, i, neighbors, clusterId, eps, minPts);
     }
-    
-    // Sort clusters by size
-    std::vector<std::pair<int, int>> sortedClusters;
-    for (const auto& pair : clusterSizes) {
-        sortedClusters.push_back({pair.second, pair.first}); // {size, clusterId}
+  }
+
+  // Count points in each cluster
+  std::map<int, int> clusterSizes;
+  for (const auto &point : points) {
+    if (point.clusterId > 0) {
+      clusterSizes[point.clusterId]++;
     }
-    std::sort(sortedClusters.begin(), sortedClusters.end(), 
-              std::greater<std::pair<int, int>>()); // Sort by size in descending order
-    
-    // Keep track of clusters to keep
-    std::set<int> keepClusters;
-    for (int i = 0; i < std::min(bound, (int)sortedClusters.size()); ++i) {
-        keepClusters.insert(sortedClusters[i].second);
+  }
+
+  // Sort clusters by size
+  std::vector<std::pair<int, int>> sortedClusters;
+  for (const auto &pair : clusterSizes) {
+    sortedClusters.push_back({pair.second, pair.first}); // {size, clusterId}
+  }
+  std::sort(
+      sortedClusters.begin(), sortedClusters.end(),
+      std::greater<std::pair<int, int>>()); // Sort by size in descending order
+
+  // Keep track of clusters to keep
+  std::set<int> keepClusters;
+  for (int i = 0; i < std::min(bound, (int)sortedClusters.size()); ++i) {
+    keepClusters.insert(sortedClusters[i].second);
+  }
+
+  // Second pass: Mark points in smaller clusters as cluster 0
+  for (auto &point : points) {
+    if (point.clusterId > 0 &&
+        keepClusters.find(point.clusterId) == keepClusters.end()) {
+      point.clusterId = 0; // Mark as cluster 0 instead of -1
     }
-    
-    // Second pass: Mark points in smaller clusters as cluster 0
-    for (auto& point : points) {
-        if (point.clusterId > 0 && keepClusters.find(point.clusterId) == keepClusters.end()) {
-            point.clusterId = 0;  // Mark as cluster 0 instead of -1
-        }
+  }
+
+  // Renumber remaining clusters from 1 to bound
+  std::map<int, int> clusterRemap;
+  int newClusterId = 1;
+  for (const auto &cluster : keepClusters) {
+    clusterRemap[cluster] = newClusterId++;
+  }
+
+  // Apply new cluster numbering, leaving cluster 0 points unchanged
+  for (auto &point : points) {
+    if (point.clusterId > 0) {
+      point.clusterId = clusterRemap[point.clusterId];
     }
-    
-    // Renumber remaining clusters from 1 to bound
-    std::map<int, int> clusterRemap;
-    int newClusterId = 1;
-    for (const auto& cluster : keepClusters) {
-        clusterRemap[cluster] = newClusterId++;
-    }
-    
-    // Apply new cluster numbering, leaving cluster 0 points unchanged
-    for (auto& point : points) {
-        if (point.clusterId > 0) {
-            point.clusterId = clusterRemap[point.clusterId];
-        }
-    }
+  }
 }
 void extractSinks(Node *node, std::vector<Sink> &sinks) {
   if (!node) {
@@ -1591,20 +1626,21 @@ void assignClusterIdsToLeafNodes(Node *node, const std::vector<Point> &points) {
 }
 
 void runDBSCANAndAssignClusters(Node *root, double eps, int minPts, int bound) {
-    std::vector<Sink> sinks;
-    extractSinks(root, sinks);
+  std::vector<Sink> sinks;
+  extractSinks(root, sinks);
 
-    std::vector<Point> points;
-    for (const auto &sink : sinks) {
-        points.push_back({static_cast<double>(sink.x), static_cast<double>(sink.y), 0});
-    }
+  std::vector<Point> points;
+  for (const auto &sink : sinks) {
+    points.push_back(
+        {static_cast<double>(sink.x), static_cast<double>(sink.y), 0});
+  }
 
-    dbscan(points, eps, minPts, bound);  // Pass the bound parameter
+  dbscan(points, eps, minPts, bound); // Pass the bound parameter
 
-    assignClusterIdsToLeafNodes(root, points);
-    outputDBSCANResults(points, root->z, "dbscan_results_z_" + std::to_string(root->z) + ".csv");
+  assignClusterIdsToLeafNodes(root, points);
+  outputDBSCANResults(points, root->z,
+                      "dbscan_results_z_" + std::to_string(root->z) + ".csv");
 }
-
 
 // Function to calculate the Manhattan distance between two sinks
 int manhattanDistance(const Sink &a, const Sink &b) {
@@ -1814,7 +1850,6 @@ std::vector<Sink> convertNodesToSinks(const std::vector<Node *> &nodes) {
   return allSinks;
 }
 
-
 void assignClusterIdToTree(Node *node, int clusterId) {
   if (!node)
     return; // Base case: if node is nullptr, return
@@ -1848,7 +1883,7 @@ Point getMidpointByClusterId(int clusterId) {
 }
 void cleanupPreviousFiles() {
   // Delete DBSCAN results files
-  for (int z = 1; z <= 10; z++) { 
+  for (int z = 1; z <= 10; z++) {
     string dbscan_file = "dbscan_results_z_" + to_string(z) + ".csv";
     string zeroskew_file =
         "zeroskew_points_and_lines_z_" + to_string(z) + ".txt";
@@ -1863,58 +1898,59 @@ void cleanupPreviousFiles() {
   }
 }
 
-  
-  void calculateBottomUpDelay(Node* node) {
-    if (!node) return;
+void calculateBottomUpDelay(Node *node) {
+  if (!node)
+    return;
 
-    // Process children first
-    calculateBottomUpDelay(node->leftChild);
-    calculateBottomUpDelay(node->rightChild);
+  // Process children first
+  calculateBottomUpDelay(node->leftChild);
+  calculateBottomUpDelay(node->rightChild);
 
-    // For leaf nodes
-    if (!node->leftChild && !node->rightChild) {
-        // Start with clock source resistance for the first segment
-        double totalResistance = clockSource.outputResistance + node->resistance;
-        node->elmoreDelay = totalResistance * node->capacitance;
-
-        if (node->isBuffered) {
-            node->elmoreDelay += bufferUnits.intrinsicDelay;
-        }
-        return;
-    }
-
-    // For internal nodes
-    double maxChildDelay = 0.0;
-
-    // Calculate total downstream capacitance and find max child delay
-    double downstreamCap = node->capacitance;
-    if (node->leftChild) {
-        maxChildDelay = max(maxChildDelay, node->leftChild->elmoreDelay);
-        downstreamCap += node->leftChild->capacitance;
-    }
-    if (node->rightChild) {
-        maxChildDelay = max(maxChildDelay, node->rightChild->elmoreDelay);
-        downstreamCap += node->rightChild->capacitance;
-    }
-
-    // Calculate this node's delay contribution
-    double nodeDelay = node->resistance * downstreamCap;
-
-    // Total delay is max child delay plus this node's contribution
-    node->elmoreDelay = maxChildDelay + nodeDelay;
+  // For leaf nodes
+  if (!node->leftChild && !node->rightChild) {
+    // Start with clock source resistance for the first segment
+    double totalResistance = clockSource.outputResistance + node->resistance;
+    node->elmoreDelay = totalResistance * node->capacitance;
 
     if (node->isBuffered) {
-        node->elmoreDelay += bufferUnits.intrinsicDelay;
+      node->elmoreDelay += bufferUnits.intrinsicDelay;
     }
+    return;
   }
 
-  void calculateBottomUpElmoreDelay(Node* node) {
-    if (!node) return;
-    depthFirstCapacitance(node);
-    calculateBottomUpDelay(node);
+  // For internal nodes
+  double maxChildDelay = 0.0;
+
+  // Calculate total downstream capacitance and find max child delay
+  double downstreamCap = node->capacitance;
+  if (node->leftChild) {
+    maxChildDelay = max(maxChildDelay, node->leftChild->elmoreDelay);
+    downstreamCap += node->leftChild->capacitance;
   }
+  if (node->rightChild) {
+    maxChildDelay = max(maxChildDelay, node->rightChild->elmoreDelay);
+    downstreamCap += node->rightChild->capacitance;
+  }
+
+  // Calculate this node's delay contribution
+  double nodeDelay = node->resistance * downstreamCap;
+
+  // Total delay is max child delay plus this node's contribution
+  node->elmoreDelay = maxChildDelay + nodeDelay;
+
+  if (node->isBuffered) {
+    node->elmoreDelay += bufferUnits.intrinsicDelay;
+  }
+}
+
+void calculateBottomUpElmoreDelay(Node *node) {
+  if (!node)
+    return;
+  depthFirstCapacitance(node);
+  calculateBottomUpDelay(node);
+}
 int main() {
-  
+
   cleanupPreviousFiles();
   auto start = std::chrono::high_resolution_clock::now();
   // Create log file with timestamp
@@ -1931,16 +1967,17 @@ int main() {
   // Redirect cout to the log file
   std::streambuf *coutBuf = std::cout.rdbuf();
   std::cout.rdbuf(logFile.rdbuf());
-  //int testbound = 10;
-  int bound = 70; //Inserts Bound+1 MIVs per tier, Bound MIVs + 1 MIV for the unclustered sinks
+  // int testbound = 10;
+  int bound = 25; // Inserts Bound+1 MIVs per tier, Bound MIVs + 1 MIV for the
+                  // unclustered sinks, total MIVs inserted = (Bound * Tier)
   int idealSum = 0;
   int zsmSum = 0;
   int subtreeTotalSum = 0;
   parseInput("benchmark10.txt");
   displayParsedData();
-  //Separate sinks by their z-coordinate
+  // Separate sinks by their z-coordinate
   map<int, vector<Sink>> sinksByZ;
-  //std::map<int, std::vector<SubtreeInfo>> tierSubtreeInfo;
+  // std::map<int, std::vector<SubtreeInfo>> tierSubtreeInfo;
   std::map<int, std::vector<Sink>> tierMIVSinks;
   for (const auto &sink : sinks) {
     sinksByZ[sink.z].push_back(sink);
@@ -1948,18 +1985,18 @@ int main() {
 
   for (const auto &pair : sinksByZ) {
     int z = pair.first;
-    //const auto &sinksGroup = pair.second;
+    // const auto &sinksGroup = pair.second;
     vector<Sink> sinksGroup = pair.second;
     int tierZsmSum = 0;
 
     // Add MIV sinks from lower tier (z-1) if they exist
-    if (z > 1 && tierMIVSinks.find(z-1) != tierMIVSinks.end()) {
-        const auto& mivSinks = tierMIVSinks[z-1];
-        sinksGroup.insert(sinksGroup.end(), mivSinks.begin(), mivSinks.end());
+    if (z > 1 && tierMIVSinks.find(z - 1) != tierMIVSinks.end()) {
+      const auto &mivSinks = tierMIVSinks[z - 1];
+      sinksGroup.insert(sinksGroup.end(), mivSinks.begin(), mivSinks.end());
     }
-    
+
     // For each z-coordinate, generate the tree and then perform zero skew tree
-    Node *root = AbsTreeGen3D(sinksGroup, bound);
+    Node *root = AbsTreeGen3D(sinksGroup, bound - 1);
     int wireLength = calculateWirelength(sinksGroup);
     root->z = z; // Assign the z coordinate of the sink group to the root node
     cout << "\nProcessing z-coordinate: " << z << endl;
@@ -1967,11 +2004,12 @@ int main() {
     string tierFilename =
         "zeroskew_points_and_lines_z_" + to_string(z) + ".txt";
     assignPhysicalLocations(root);
-    //assignPhysicalCharacteristics(root); WIP
-    //Baseline case, eps = layout.width, minPts=1 or numSinks
+    // assignPhysicalCharacteristics(root); WIP
+    // Baseline case, eps = layout.width, minPts=1 or numSinks
+    // double eps = layout.width * .085; // Epsilon distance
     double eps = layout.width * .085; // Epsilon distance
-    int minPts = 4;                    // Minimum points to form a cluster
-    runDBSCANAndAssignClusters(root, eps, minPts, bound);
+    int minPts = 4;                   // Minimum points to form a cluster
+    runDBSCANAndAssignClusters(root, eps, minPts, bound - 1);
     clusterMidpoints = calculateClusterMidpoints(root);
     //  Create subtrees for each cluster
     std::vector<Node *> clusterRoots = createClusterSubtrees(root);
@@ -1985,7 +2023,7 @@ int main() {
       std::cout << "Cluster " << subtreeRoot->cluster_id << " midpoint ("
                 << currMidpoint.x << "," << currMidpoint.y << ")" << endl;
       std::vector<Sink> subtreeSinks = treeToSinkVector(subtreeRoot);
-      Node *AbstractSubtree = AbsTreeGen3D(subtreeSinks, bound);
+      Node *AbstractSubtree = AbsTreeGen3D(subtreeSinks, bound - 1);
       std::cout << "***********************************" << std::endl;
       assignPhysicalLocations(AbstractSubtree);
       assignClusterIdToTree(AbstractSubtree, subtreeRoot->cluster_id);
@@ -1993,17 +2031,17 @@ int main() {
       Node *zeroSkewSubtree = zeroSkewTree(AbstractSubtree);
       zeroSkewSubtree->node_type = "MIV";
       depthFirstCapacitance(zeroSkewSubtree);
-      depthFirstDelay(zeroSkewSubtree, tsvUnits.resistance); //WIP
-      //calculateBottomUpElmoreDelay(zeroSkewSubtree); WIP
+      depthFirstDelay(zeroSkewSubtree, tsvUnits.resistance); // WIP
+      // calculateBottomUpElmoreDelay(zeroSkewSubtree); WIP
 
       // Store the subtree information in map
       Sink rootSink;
       rootSink.x = zeroSkewSubtree->x;
       rootSink.y = zeroSkewSubtree->y;
-      rootSink.z = z;  
-      rootSink.delay = zeroSkewSubtree->elmoreDelay; 
-      rootSink.cluster_id = zeroSkewSubtree->cluster_id; 
-      rootSink.sink_type = "MIV"; 
+      rootSink.z = z;
+      rootSink.delay = zeroSkewSubtree->elmoreDelay;
+      rootSink.cluster_id = zeroSkewSubtree->cluster_id;
+      rootSink.sink_type = "MIV";
       tierMIVSinks[z].push_back(rootSink);
       printTree(zeroSkewSubtree);
 
@@ -2019,7 +2057,7 @@ int main() {
       exportPointsAndLines(zeroSkewSubtree, tierFilename);
       cout << "Exported subtree for cluster " << subtreeRoot->cluster_id
            << " to tier " << z << " file" << endl;
-      deleteTree(zeroSkewSubtree);  // Clean up after exporting
+      deleteTree(zeroSkewSubtree); // Clean up after exporting
     }
 
     cout << "Completed exporting all subtrees for tier " << z << " to "
@@ -2033,16 +2071,16 @@ int main() {
     cout << "!!! Wirelength for z = " << z << ": " << wireLength << endl;
     cout << "~~~Zero Skew Tree Wirelength for z = " << z << ": "
          << zsmWireLength << endl;
-    deleteTree(root);  // Clean up after exporting (Might not be right)
+    deleteTree(root); // Clean up after exporting (Might not be right)
   }
   // To print/access the information:
-  for (const auto& pair : tierMIVSinks) {
-      cout << "Tier " << pair.first << " subtree roots:" << endl;
-      for (const auto& sink : pair.second) {
-          cout<< "Sink type: " << sink.sink_type <<  "Cluster " << sink.cluster_id 
-               << " at (" << sink.x << "," << sink.y 
-               << ") with delay " << sink.delay << endl;
-      }
+  for (const auto &pair : tierMIVSinks) {
+    cout << "Tier " << pair.first << " subtree roots:" << endl;
+    for (const auto &sink : pair.second) {
+      cout << "Sink type: " << sink.sink_type << "Cluster " << sink.cluster_id
+           << " at (" << sink.x << "," << sink.y << ") with delay "
+           << sink.delay << endl;
+    }
   }
   auto end = std::chrono::high_resolution_clock::now();
   // Calculate runtime
