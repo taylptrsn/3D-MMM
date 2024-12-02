@@ -24,9 +24,31 @@ A collection of Python scripts for generating and visualizing clock tree synthes
 - Supports batch processing of multiple CSV files
 - Automatically saves plots to a designated output directory
 
+## INPUT
+The program reads a benchmark file (e.g., `benchmark0.txt`) with the following format:
+- **Line 1**: Layout area dimensions and number of dies
+- **Line 2**: Wire resistance (ohm/um) and capacitance (fF/um)
+- **Line 3**: Buffer characteristics (resistance, capacitance, delay)
+- **Line 4**: TSV/MIV characteristics (resistance, capacitance)
+- **Line 5**: Clock source location and output resistance
+- **Line 6**: Number of sinks
+- **Following lines**: Sink coordinates (x,y,z) and capacitance
+
+## OUTPUT
+- Generates a log file with a timestamp containing:
+  - Ideal wirelength sum
+  - Zero skew tree wirelength sum
+  - Cluster ZST total
+  - Execution time
+- Provides detailed merging point locations and wire routing information
+- Intermediate outputs
+  - Clustering Visualization Output text for each tier, used by python utility function /Utilities/clustering_visualizer.py
+  - Clock Tree Visualization Output text for each tier, used by python utility function /Utilities/clock_tree_visualizer.py
+
 ## Requirements
 
 ```python
 matplotlib
 numpy
 pandas
+```
