@@ -35,15 +35,26 @@ ___
 
 ## Testcase Generator
 ### INPUT
-The program reads a benchmark file (e.g., `benchmark0.txt`) with the following format:
-- **Line 1**: Layout area dimensions and number of dies
-- **Line 2**: Wire resistance (ohm/um) and capacitance (fF/um)
-
+These parameters are set within the script:
+  - Layout dimensions (layout_x, layout_y)
+  - Number of dies (num_dies)
+  - Wire properties (wire_resistance, wire_capacitance)
+  - Buffer characteristics (buffer_resistance, buffer_input_cap, buffer_delay)
+  - TSV properties (tsv_resistance, tsv_capacitance)
+  - Clock source information (clock_source_x, clock_source_y, clock_source_z, clock_source_resistance)
+  - Number of sinks (num_sinks)
 
 ### OUTPUT
-- Generates a log file with a timestamp containing:
-  - Ideal wirelength sum
+- Generates an output.txt file containing:
+  - Layout specifications
+  - Wire and buffer parameters
+  - TSV characteristics
+  - Clock source information
+  - Randomly generated sink coordinates and capacitance values
 
+### Usage
+- Configure the static parameters as well as the randomized parameter ranges in the script
+- Then run via `python testcase_generator.py`
 ___
 
 ## Clock Tree Visualizer
@@ -56,7 +67,9 @@ The program reads a benchmark file (e.g., `benchmark0.txt`) with the following f
 ### OUTPUT
 - Generates a log file with a timestamp containing:
   - Ideal wirelength sum
-
+  - 
+### Usage
+`python clock_tree_visualizer.py [subdirectory] [interactive]`
 ___
 
 ## Clustering Visualizer
@@ -70,5 +83,7 @@ The program reads a benchmark file (e.g., `benchmark0.txt`) with the following f
 - Generates a log file with a timestamp containing:
   - Ideal wirelength sum
 
+### Usage
+`python clock_tree_visualizer.py [subdirectory] [interactive]`
 
 
