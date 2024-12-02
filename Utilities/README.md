@@ -48,7 +48,7 @@ These parameters are set within the script:
 - Generates an output.txt file containing:
   - Layout specifications
   - Wire and buffer parameters
-  - TSV characteristics
+  - TSV/MIV characteristics
   - Clock source information
   - Randomly generated sink coordinates and capacitance values
 
