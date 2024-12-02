@@ -21,9 +21,8 @@ The program reads a benchmark file (e.g., `benchmark0.txt`) with the following f
 
 ## OUTPUT
 - Generates a log file with a timestamp containing:
-  - Ideal wirelength sum
-  - Zero skew tree wirelength sum
-  - Cluster ZST total
+  - Ideal wirelength sum (based on minimum spanning tree of tier, with one MIV)
+  - Cluster Zero Skew Tree Wirelength 
   - Execution time
 - Provides detailed merging point locations and wire routing information
 - Intermediate outputs
