@@ -1,22 +1,22 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
 import os
+import glob
 
 
-def plot_clusters(df, output_path=None):
-    # Ensure cluster is treated as a numeric type
+def read_csv_data(file_path):
+    df = pd.read_csv(file_path)
     df['cluster'] = pd.to_numeric(df['cluster'], errors='coerce')
+    return df
 
-    # Get unique cluster labels
+
+def plot_clusters(df, interactive=False, output_filename='output_plot.png'):
     unique_clusters = df['cluster'].unique()
-
-    # Create a color map with a unique color for each cluster
     color_map = plt.cm.get_cmap('tab20')
     colors = color_map(np.linspace(0, 1, len(unique_clusters)))
-
-    # Create a scatter plot
-    plt.figure(figsize=(7.5, 7.5))
+    plt.figure(figsize=(12, 14))  # Increase figure size for more space
     for cluster, color in zip(unique_clusters, colors):
         cluster_points = df[df['cluster'] == cluster]
         plt.scatter(cluster_points['x'],
@@ -24,63 +24,63 @@ def plot_clusters(df, output_path=None):
                     c=[color],
                     label=f'Cluster {cluster}',
                     alpha=0.7)
-
-    # Set labels and title
-    plt.xlabel('X coordinate')
-    plt.ylabel('Y coordinate')
-    plt.title('Clusters colored by their cluster IDs')
-
-    # Add a legend
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-
-    # Adjust layout to prevent cutting off the legend
-    plt.tight_layout()
-
-    # Save or show the plot
-    if output_path:
-        plt.savefig(output_path)
-        plt.close()
+    plt.xlabel('X coordinate', fontsize=14)
+    plt.ylabel('Y coordinate', fontsize=14)
+    plt.title('Clusters colored by their cluster IDs', fontsize=16)
+    # Adjust legend to be below the plot
+    total_clusters = len(unique_clusters)
+    ncol = min(total_clusters, 8)
+    legend = plt.legend(loc='upper center',
+                        fontsize='medium',
+                        framealpha=0.75,
+                        ncol=ncol,
+                        bbox_to_anchor=(0.5, -0.075))
+    legend.get_frame().set_facecolor('white')
+    plt.tight_layout(pad=3.0)
+    plt.subplots_adjust(top=0.85, bottom=0.2)
+    if interactive:
+        plt.ion()  # Turn on interactive mode
+        plt.draw()
+        plt.pause(0.001)
+        input('Press Enter to continue...')
     else:
-        plt.show()
+        plt.savefig(output_filename,
+                    bbox_inches='tight')  # Save with the new filename
+        # plt.show() <- Remove this line to prevent opening the plot in non-interactive mode.
+        plt.close(
+        )  # Close the plot to free up memory and ensure the program exits properly
 
 
-def main():
-    # Prompt the user for the directory
-    dir_path = input(
-        "Please enter the path to the directory containing CSV files: ")
-
-    if not os.path.isdir(dir_path):
-        print("Invalid directory. Exiting...")
-        return
-
-    # Create output directory for plots
-    output_dir = os.path.join(dir_path, 'cluster_plots')
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Process all CSV files in the directory
-    csv_files = [f for f in os.listdir(dir_path) if f.endswith('.csv')]
-
-    if not csv_files:
-        print("No CSV files found in the selected directory.")
-        return
-
-    for csv_file in csv_files:
-        try:
-            # Read the CSV file
-            file_path = os.path.join(dir_path, csv_file)
-            df = pd.read_csv(file_path)
-
-            # Create output path for the plot
-            output_path = os.path.join(
-                output_dir, f'{os.path.splitext(csv_file)[0]}_plot.png')
-
-            # Generate and save the plot
-            plot_clusters(df, output_path)
-            print(f"Processed {csv_file} -> {output_path}")
-
-        except Exception as e:
-            print(f"Error processing {csv_file}: {str(e)}")
+def get_csv_files(subdir):
+    pattern = os.path.join(subdir, '*.csv')  # Adjust the file path as needed
+    return glob.glob(pattern)
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 2:
+        subdir = sys.argv[1]
+        interactive = sys.argv[2].lower() == 'true'
+    else:
+        subdir = input(
+            "Enter subdirectory name (or press Enter for current dir): "
+        ).strip() or '.'
+        interactive_input = input(
+            "Do you want to view plots interactively? (true/false): ").strip()
+        interactive = interactive_input.lower() == 'true'
+
+    csv_files = get_csv_files(subdir)
+    if not csv_files:
+        print(f"No CSV files found in {subdir}")
+        sys.exit(1)
+
+    print(f"Found {len(csv_files)} files to process")
+    for file_path in csv_files:
+        print(f"Processing: {file_path}")
+        df = read_csv_data(file_path)
+        # Generate the output file name based on the input file name
+        base_filename = os.path.splitext(os.path.basename(file_path))[0]
+        output_filename = os.path.join(os.path.dirname(file_path),
+                                       f"{base_filename}_output_plot.png")
+        plot_clusters(df, interactive,
+                      output_filename)  # Pass the output filename
+    print("Plots processed successfully.")
