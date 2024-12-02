@@ -46,6 +46,11 @@ The program reads a benchmark file (e.g., `benchmark0.txt`) with the following f
 To compile the program, use:
 `make`
 
+
+
+
+
+# UTILITIES
 # Sink Generation Script
 
 This script generates random sink data, including coordinates and capacitance values, and writes it to an output file.
@@ -77,6 +82,71 @@ The script uses the following parameters:
 ## Outputs
 
 The script generates a text file named `output.txt` with the following format:
+
+
+# Zero Skew Tree Visualization
+
+This Python script processes zero skew tree data from files and generates visualizations based on the provided points and lines. It utilizes `matplotlib` for plotting.
+
+## Inputs
+
+### Command Line Arguments
+
+1. **Subdirectory** (optional):
+   - The name of the subdirectory within the `MIV` folder where zero skew data files are stored. If not provided, the script will process files from the base `MIV` directory.
+
+2. **Interactive Mode** (optional):
+   - A boolean value (`true` or `false`) indicating whether to display plots interactively. If not provided, the user will be prompted for input.
+
+### Input File Format
+
+The script expects input data files in the following format:
+
+- Each line represents either a point (`P`) or a line (`L`):
+  - **Point (P)**:
+    ```
+    P x y (Leaf | (MIV)  # Optional status indicator
+    ```
+    - `x`: x-coordinate of the point
+    - `y`: y-coordinate of the point
+    - `(Leaf` indicates a leaf node point.
+    - `(MIV` indicates a MIV node point.
+
+  - **Line (L)**:
+    ```
+    L x1 y1 x2 y2
+    ```
+    - `x1`, `y1`: starting coordinates of the line
+    - `x2`, `y2`: ending coordinates of the line
+
+## Outputs
+
+The script generates the following outputs:
+
+1. **Output PNG Files**:
+   - Two types of output visualizations are produced based on the input data:
+     - **Manhattan Routing**: Files named in the format:
+       ```
+       <subdirectory>_manhattan_<base_filename>.png
+       ```
+     - **Direct Lines**: Files named in the format:
+       ```
+       <subdirectory>_direct_<base_filename>.png
+       ```
+   - Both filenames will not include the original `.txt` extension from the input files.
+
+### File Location
+
+The output files are saved in the same directory as the input files with the respective visualization formats.
+
+## Requirements
+
+- Python 3.10 or higher
+- Required packages can be installed using `poetry` or `pip`:
+  - `matplotlib`
+  - `numpy`
+  - `pandas`
+  - `scipy`
 
 
 
