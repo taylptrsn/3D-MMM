@@ -27,7 +27,7 @@ A collection of Python scripts for generating and visualizing clock tree synthes
 ## Requirements
 Language: Python 3.11 or Above
 
-Dependencies
+Dependencies:
 ```python
 matplotlib
 numpy
