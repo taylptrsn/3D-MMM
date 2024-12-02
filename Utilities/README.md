@@ -74,7 +74,7 @@ Generates two types of PNG image files for each input file:
 If interactive mode is enabled, displays plots on screen
 
 ### Usage
-`python clock_tree_visualizer.py [subdirectory] [interactive]`
+- Run via `python clock_tree_visualizer.py [subdirectory] [interactive]` if the command line arguments are not provided the user will be prompted to indicate their choice
 ___
 
 ## Clustering Visualizer
