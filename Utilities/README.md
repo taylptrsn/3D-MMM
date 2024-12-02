@@ -64,8 +64,7 @@ Input files:
     
 Optional command-line arguments:
   - subdirectory: Name of the subdirectory in the MIV folder (if not provided, user will be prompted)
-  - interactive: Boolean flag for interactive plot display (if not provided, user will be prompted)
-
+  - interactive: Boolean flag(true/false) for interactive plot display (if not provided, user will be prompted) 
 
 ### OUTPUT
 Generates two types of PNG image files for each input file:
@@ -80,16 +79,24 @@ ___
 
 ## Clustering Visualizer
 ### INPUT
-The program reads a benchmark file (e.g., `benchmark0.txt`) with the following format:
-- **Line 1**: Layout area dimensions and number of dies
-- **Line 2**: Wire resistance (ohm/um) and capacitance (fF/um)
-
+Input files:
+  - CSV files in the specified directory with columns:
+    - 'x': X-coordinate
+    - 'y': Y-coordinate
+    -'cluster': Cluster ID
+    
+Optional command-line arguments:
+  - subdirectory: Name of the subdirectory in the MIV folder (if not provided, user will be prompted)
+  - interactive: Boolean flag(true/false) for interactive plot display (if not provided, user will be prompted)
 
 ### OUTPUT
-- Generates a log file with a timestamp containing:
-  - Ideal wirelength sum
+Generates a PNG image files for each input file:
+  - Clustering visualization: `{original_csv_name}_output_plot.png`
+
+If interactive mode is enabled, displays plots on screen
 
 ### Usage
-`python clock_tree_visualizer.py [subdirectory] [interactive]`
+- Run via `python clustering_visualizer.py [subdirectory] [interactive]`
+  - if the command line arguments are not provided the user will be prompted to indicate their choice
 
 
