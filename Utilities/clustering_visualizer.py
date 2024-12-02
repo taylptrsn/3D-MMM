@@ -57,22 +57,23 @@ def get_csv_files(subdir):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 2:
+    subdir = '.'
+    interactive = False
+    if len(sys.argv) > 1:
         subdir = sys.argv[1]
-        interactive = sys.argv[2].lower() == 'true'
+        if len(sys.argv) > 2:
+            interactive = sys.argv[2].lower() == 'true'
     else:
-        subdir = input(
+        subdir_input = input(
             "Enter subdirectory name (or press Enter for current dir): "
         ).strip() or '.'
         interactive_input = input(
             "Do you want to view plots interactively? (true/false): ").strip()
         interactive = interactive_input.lower() == 'true'
-
     csv_files = get_csv_files(subdir)
     if not csv_files:
         print(f"No CSV files found in {subdir}")
         sys.exit(1)
-
     print(f"Found {len(csv_files)} files to process")
     for file_path in csv_files:
         print(f"Processing: {file_path}")
