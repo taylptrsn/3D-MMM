@@ -1,4 +1,4 @@
-# CLUSTER DME CLOCK TREE SYNTHESIS PROGRAM
+# CLUSTER DME 3D CLOCK TREE SYNTHESIS PROGRAM
 
 ## TODO
 - Automatic Unit Conversion on Program Data Input and Output
