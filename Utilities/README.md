@@ -34,39 +34,39 @@ pandas
 ___
 
 ## Testcase Generator
-## INPUT
+### INPUT
 The program reads a benchmark file (e.g., `benchmark0.txt`) with the following format:
 - **Line 1**: Layout area dimensions and number of dies
 - **Line 2**: Wire resistance (ohm/um) and capacitance (fF/um)
 
 
-## OUTPUT
+### OUTPUT
 - Generates a log file with a timestamp containing:
   - Ideal wirelength sum
 
 ___
 
 ## Clock Tree Visualizer
-## INPUT
+### INPUT
 The program reads a benchmark file (e.g., `benchmark0.txt`) with the following format:
 - **Line 1**: Layout area dimensions and number of dies
 - **Line 2**: Wire resistance (ohm/um) and capacitance (fF/um)
 
 
-## OUTPUT
+### OUTPUT
 - Generates a log file with a timestamp containing:
   - Ideal wirelength sum
 
 ___
 
 ## Clustering Visualizer
-## INPUT
+### INPUT
 The program reads a benchmark file (e.g., `benchmark0.txt`) with the following format:
 - **Line 1**: Layout area dimensions and number of dies
 - **Line 2**: Wire resistance (ohm/um) and capacitance (fF/um)
 
 
-## OUTPUT
+### OUTPUT
 - Generates a log file with a timestamp containing:
   - Ideal wirelength sum
 
