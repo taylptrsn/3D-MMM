@@ -59,15 +59,19 @@ ___
 
 ## Clock Tree Visualizer
 ### INPUT
-The program reads a benchmark file (e.g., `benchmark0.txt`) with the following format:
-- **Line 1**: Layout area dimensions and number of dies
-- **Line 2**: Wire resistance (ohm/um) and capacitance (fF/um)
+Input files:
+  - Text files in the specified MIV subdirectory with the pattern zeroskew_points_and_lines_z_*.txt
+Optional command-line arguments:
+  - subdirectory: Name of the subdirectory in the MIV folder (if not provided, user will be prompted)
+  - interactive: Boolean flag for interactive plot display (if not provided, user will be prompted)
 
 
 ### OUTPUT
-- Generates a log file with a timestamp containing:
-  - Ideal wirelength sum
-  - 
+Generates two types of PNG image files for each input file:
+  - Manhattan routing visualization: `{subdir}_manhattan_zeroskew_points_and_lines_z_*.png`
+  - Direct line routing visualization: `{subdir}_direct_zeroskew_points_and_lines_z_*.png`
+If interactive mode is enabled, displays plots on screen
+
 ### Usage
 `python clock_tree_visualizer.py [subdirectory] [interactive]`
 ___
