@@ -37,3 +37,11 @@ The program reads a benchmark file (e.g., `benchmark0.txt`) with the following f
 To compile the program, use:
 ```bash
 make
+
+## TODO
+- Automatic Unit Conversion on Program Data Input and Output
+- Find way to make sure MIV delay/cap from previous tier is not overwritten/is
+assigned correctly when calculating merging points of next tier.
+- Note: This program is fairly robust, but there are still some edge cases that
+may cause it to throw an error or infinite loop!
+
