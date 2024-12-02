@@ -45,7 +45,10 @@ The program reads a benchmark file (e.g., `benchmark0.txt`) with the following f
 ## BUILD
 To compile the program, use:
 ```bash
-make
+ make```
+
+
+
 
 
 
