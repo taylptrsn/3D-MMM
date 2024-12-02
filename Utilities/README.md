@@ -61,6 +61,7 @@ ___
 ### INPUT
 Input files:
   - Text files in the specified MIV subdirectory with the pattern zeroskew_points_and_lines_z_*.txt
+    
 Optional command-line arguments:
   - subdirectory: Name of the subdirectory in the MIV folder (if not provided, user will be prompted)
   - interactive: Boolean flag for interactive plot display (if not provided, user will be prompted)
