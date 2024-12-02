@@ -83,6 +83,7 @@ The script uses the following parameters:
 
 The script generates a text file named `output.txt` with the following format:
 
+___
 
 ## Zero Skew Tree Visualization
 
