@@ -50,16 +50,16 @@ To compile the program, use:
 ___
 
 
-# UTILITIES
-# Sink Generation Script
+## UTILITIES
+### Sink Generation Script
 
 This script generates random sink data, including coordinates and capacitance values, and writes it to an output file.
 
-## Overview
+### Overview
 
 The script creates a specified number of sinks with unique coordinates in a 2D layout. Each sink also has a randomly generated capacitance value. The output is formatted and saved in a text file.
 
-## Inputs
+### Inputs
 
 The script uses the following parameters:
 
@@ -79,16 +79,16 @@ The script uses the following parameters:
 - **clock_source_resistance (int)**: Resistance at the clock source (ohm) (default: 100).
 - **num_sinks (int)**: The number of sinks to be generated (default: 800).
 
-## Outputs
+### Outputs
 
 The script generates a text file named `output.txt` with the following format:
 
 
-# Zero Skew Tree Visualization
+## Zero Skew Tree Visualization
 
 This Python script processes zero skew tree data from files and generates visualizations based on the provided points and lines. It utilizes `matplotlib` for plotting.
 
-## Inputs
+### Inputs
 
 ### Command Line Arguments
 
@@ -119,7 +119,7 @@ The script expects input data files in the following format:
     - `x1`, `y1`: starting coordinates of the line
     - `x2`, `y2`: ending coordinates of the line
 
-## Outputs
+### Outputs
 
 The script generates the following outputs:
 
@@ -135,7 +135,7 @@ The script generates the following outputs:
        ```
    - Both filenames will not include the original `.txt` extension from the input files.
 
-### File Location
+#### File Location
 
 The output files are saved in the same directory as the input files with the respective visualization formats.
 
