@@ -136,7 +136,7 @@ The script generates the following outputs:
        ```
    - Both filenames will not include the original `.txt` extension from the input files.
 
-#### File Location
+### File Location
 
 The output files are saved in the same directory as the input files with the respective visualization formats.
 
