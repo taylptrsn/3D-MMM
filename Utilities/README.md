@@ -67,7 +67,7 @@ Optional command-line arguments:
   - interactive: Boolean flag(true/false) for interactive plot display (if not provided, user will be prompted) 
 
 ### OUTPUT
-Generates two types of PNG image files for each input file:
+Generates two types of PNG image files for each input file, located in the same directory as input file:
   - Manhattan routing visualization: `{subdir}_manhattan_zeroskew_points_and_lines_z_*.png`
   - Direct line routing visualization: `{subdir}_direct_zeroskew_points_and_lines_z_*.png`
 If interactive mode is enabled, displays plots on screen
@@ -90,7 +90,7 @@ Optional command-line arguments:
   - interactive: Boolean flag(true/false) for interactive plot display (if not provided, user will be prompted)
 
 ### OUTPUT
-Generates a PNG image files for each input file:
+Generates a PNG image files for each input file, located in the same directory as input file:
   - Clustering visualization: `{original_csv_name}_output_plot.png`
 
 If interactive mode is enabled, displays plots on screen
