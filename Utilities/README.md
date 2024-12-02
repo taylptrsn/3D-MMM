@@ -25,12 +25,15 @@ A collection of Python scripts for generating and visualizing clock tree synthes
 - Automatically saves plots to a designated output directory
 
 ## Requirements
-
+Language: Python 3.11 or Above
+Dependencies
 ```python
 matplotlib
 numpy
 pandas
 ```
+`pip install matplotlib pandas numpy`
+
 ___
 
 ## Testcase Generator
